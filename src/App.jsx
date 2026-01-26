@@ -1,24 +1,26 @@
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { useState } from "react";
 import WelcomeModal from "./components/WelcomeModal";
+import Login from './components/login';
+import Register from './components/Register';
+import authService from './services/authservice';
 
 function App() {
-  const [showWelcome, setShowWelcome] = useState(true);
+  const [showWelcome, setShowWelcome] = useState(!authService.isAuthenticated());
 
   return (
-    <>
-      {showWelcome && (
+    <Router>
+      {showWelcome && !authService.isAuthenticated() && (
         <WelcomeModal onFinish={() => setShowWelcome(false)} />
       )}
 
-      {!showWelcome && (
-        <div className="main-content">
-          <h2>Departamentos disponibles</h2>
-          <p>
-            Aquí se carga el contenido principal de Mi Renta App.
-          </p>
-        </div>
-      )}
-    </>
+      <Routes>
+        <Route path="/" element={<Navigate to="/login" />} />
+        <Route path="/login" element={<Login />} />
+        <Route path="/register" element={<Register />} />
+        <Route path="*" element={<Navigate to="/login" />} />
+      </Routes>
+    </Router>
   );
 }
 
