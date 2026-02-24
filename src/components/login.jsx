@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import authService from '../services/authservice';
+import authService from '../services/authService';
 import './Login.css';
+import loginImg from '../assets/login.png'; // ✅ Ruta corregida
 
 function Login() {
   const navigate = useNavigate();
@@ -26,10 +27,8 @@ function Login() {
     setError('');
 
     try {
-      debugger;
-
       await authService.login(formData.email, formData.password);
-      alert('✅ Login exitoso!');
+      navigate('/dashboard'); 
       console.log('Usuario:', authService.getCurrentUser());
     } catch (err) {
       setError(err.message || 'Error al iniciar sesión');
@@ -40,15 +39,18 @@ function Login() {
 
   return (
     <div className="login-container">
+
+      {/* Lado izquierdo con la imagen */}
       <div className="login-left">
         <div className="login-illustration">
           <img 
-            src="https://i.ibb.co/Y7Bpsp9s/dibujoarriend.png" 
+            src={loginImg} 
             alt="Login" 
           />
         </div>
       </div>
 
+      {/* Lado derecho con el formulario */}
       <div className="login-right">
         <div className="login-box">
           <div className="login-header">
@@ -104,6 +106,7 @@ function Login() {
           </form>
         </div>
       </div>
+
     </div>
   );
 }
