@@ -243,7 +243,7 @@ router.put('/mi-perfil', verifyToken, async (req, res) => {
     const { nombre, apellido, telefono, fecha_nacimiento, ocupacion } = req.body;
     const result = await pool.query(
       `UPDATE inquilinos SET nombre = $1, apellido = $2, telefono = $3, 
-       fecha_nacimiento = $4, ocupacion = $5, updated_at = CURRENT_TIMESTAMP 
+        fecha_nacimiento = $4, ocupacion = $5, updated_at = CURRENT_TIMESTAMP 
        WHERE id = $6 RETURNING *`,
       [nombre, apellido, telefono, fecha_nacimiento, ocupacion, inquilinoId]
     );
