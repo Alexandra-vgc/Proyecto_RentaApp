@@ -26,11 +26,20 @@ function Login() {
     setError('');
 
     try {
-      debugger;
-
+      // 1. Iniciamos sesión
       await authService.login(formData.email, formData.password);
-      alert('✅ Login exitoso!');
-      console.log('Usuario:', authService.getCurrentUser());
+      
+      // 2. Obtenemos el usuario recién logueado
+      const user = authService.getCurrentUser();
+      
+      // 3. REDIRECCIÓN AUTOMÁTICA (Sin alert)
+      // Agregamos 'propietario' a la condición para que te mande al Dashboard
+      if (user && (user.rol === 'admin' || user.rol === 'propietario')) {
+        navigate('/admin-dashboard');
+      } else {
+        navigate('/'); // Los inquilinos normales van al home
+      }
+
     } catch (err) {
       setError(err.message || 'Error al iniciar sesión');
     } finally {

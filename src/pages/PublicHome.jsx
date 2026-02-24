@@ -1,262 +1,219 @@
-import { useState } from "react";
-import { Link } from "react-router-dom";
+import { useState, useEffect } from "react";
+import axios from "axios";
+import {
+  Box,
+  Grid,
+  Card,
+  CardContent,
+  CardMedia,
+  Typography,
+  Button,
+  InputAdornment,
+  TextField,
+  Select,
+  MenuItem,
+  Chip,
+  FormControl,
+} from "@mui/material";
+import { Search as SearchIcon } from "@mui/icons-material";
 
-const properties = [
-  {
-    id: 1,
-    type: "Departamento",
-    price: 1000,
-    title: "Departamento Amoblado en Alquiler",
-    location: "Urbanización San Sebastián, Samborondón",
-    city: "Guayaquil",
-    details: "148 m² · 3 hab · 2 baños · 1 estac",
-    image: "/imagenes/dep1.jpg",
-  },
-  {
-    id: 2,
-    type: "Departamento",
-    price: 2100,
-    title: "Departamento de Lujo",
-    location: "Puerto Santa Ana",
-    city: "Guayaquil",
-    details: "180 m² · 3 hab · 3 baños · 3 estac",
-    image: "/imagenes/dep2.jpg",
-  },
-];
+const Footer = () => (
+  <footer style={{ backgroundColor: "#fff", padding: "60px 0 30px", marginTop: "50px", borderTop: "1px solid #eee" }}>
+    <div className="container text-center text-md-start">
+      <div className="row">
+        <div className="col-md-3 mb-4">
+          <h6 className="fw-bold mb-3" style={{ color: "#ff5a00" }}>MiRentaAPP</h6>
+          <p className="small text-muted">Tu próximo hogar está a un clic de distancia. Seguridad y transparencia en cada contrato.</p>
+        </div>
+        <div className="col-md-3 mb-4">
+          <h6 className="fw-bold mb-3">Servicios</h6>
+          <ul className="list-unstyled small text-muted">
+            <li className="mb-2">Alquiler de Departamentos</li>
+            <li className="mb-2">Publicar Inmueble</li>
+            <li className="mb-2">Gestión de Contratos</li>
+          </ul>
+        </div>
+        <div className="col-md-3 mb-4">
+          <h6 className="fw-bold mb-3">Legal</h6>
+          <ul className="list-unstyled small text-muted">
+            <li className="mb-2">Términos y Condiciones</li>
+            <li className="mb-2">Política de Privacidad</li>
+          </ul>
+        </div>
+        <div className="col-md-3 mb-4">
+          <h6 className="fw-bold mb-3">Síguenos</h6>
+          <div className="d-flex gap-3">
+            <i className="bi bi-facebook fs-4 text-primary"></i>
+            <i className="bi bi-instagram fs-4 text-danger"></i>
+            <i className="bi bi-whatsapp fs-4 text-success"></i>
+          </div>
+        </div>
+      </div>
+    </div>
+  </footer>
+);
 
 export default function PublicHome() {
+  const [properties, setProperties] = useState([]);
   const [search, setSearch] = useState("");
-  const [type, setType] = useState("Todos");
-
-  // 🔥 NUEVOS ESTADOS PARA PRECIO
-  const [priceFrom, setPriceFrom] = useState("");
   const [priceTo, setPriceTo] = useState("");
-  const [showPrice, setShowPrice] = useState(false);
+  const [habs, setHabs] = useState("");
+  const [banos, setBanos] = useState("");
+  const [showWelcome, setShowWelcome] = useState(true);
 
-  // ✅ FILTRO UNIDO + PRECIO
-  const filteredProperties = properties.filter((p) => {
-    const searchText = search.trim().toLowerCase();
+  useEffect(() => {
+    axios.get("http://localhost:5000/api/admin/propiedades")
+      .then(res => setProperties(res.data))
+      .catch(err => console.error(err));
+  }, []);
 
-    const matchesCity = p.city.toLowerCase().includes(searchText);
-    const matchesLocation = p.location.toLowerCase().includes(searchText);
-    const matchesTitle = p.title.toLowerCase().includes(searchText);
-    const matchesType = type === "Todos" || p.type === type;
+  // FUNCIÓN PARA ENVIAR SOLICITUD AL PROPIETARIO
+  const enviarSolicitud = async (propiedadId) => {
+    const nombre = prompt("Para contactar al propietario, ingresa tu nombre completo:");
+    if (!nombre) return;
 
-    const matchesPriceFrom =
-      priceFrom === "" || p.price >= Number(priceFrom);
-    const matchesPriceTo =
-      priceTo === "" || p.price <= Number(priceTo);
+    try {
+      const response = await axios.post("http://localhost:5000/api/solicitudes", {
+        propiedad_id: propiedadId,
+        nombre_cliente: nombre
+      });
 
-    return (
-      (matchesCity || matchesLocation || matchesTitle) &&
-      matchesType &&
-      matchesPriceFrom &&
-      matchesPriceTo
-    );
+      if (response.status === 201 || response.status === 200) {
+        alert("✅ Solicitud enviada con éxito. El propietario se contactará contigo pronto.");
+      }
+    } catch (error) {
+      console.error("Error detallado del servidor:", error.response?.data || error.message);
+      alert(`❌ Error: ${error.response?.data?.error || "Intenta más tarde"}`);
+    }
+  };
+
+  const filtered = properties.filter(p => {
+    const matchSearch = (p.ciudad || "").toLowerCase().includes(search.toLowerCase()) || 
+                        (p.sector || "").toLowerCase().includes(search.toLowerCase());
+    const matchPrice = priceTo === "" || Number(p.precio) <= Number(priceTo);
+    const matchHabs = habs === "" || Number(p.habitaciones) >= Number(habs);
+    const matchBanos = banos === "" || Number(p.banos) >= Number(banos);
+    return matchSearch && matchPrice && matchHabs && matchBanos;
   });
 
   return (
-    <div
-      style={{
-        minHeight: "100vh",
-        background: "#F1F5F3",
-        paddingBottom: "60px",
-      }}
-    >
-      <div className="container pt-4">
-
-        {/* 🔍 FILTROS */}
-        <div
-          className="row mb-4 p-4 rounded-4"
-          style={{
-            background: "#DCE7E2",
-            boxShadow: "0 10px 30px rgba(0,0,0,0.08)",
-          }}
-        >
-          <div className="col-md-3">
-            <input
-              className="form-control"
-              placeholder="Buscar por ciudad, ubicación o tipo..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              style={{
-                borderRadius: "10px",
-                border: "1px solid #8FAEA2",
-              }}
-            />
-          </div>
-
-          <div className="col-md-2">
-            <select
-              className="form-select"
-              value={type}
-              onChange={(e) => setType(e.target.value)}
-              style={{ borderRadius: "10px" }}
-            >
-              <option value="Todos">Todos</option>
-              <option value="Departamento">Departamento</option>
-              <option value="Casa">Casa</option>
-            </select>
-          </div>
-
-          <div className="col-md-2">
-            <select className="form-select" style={{ borderRadius: "10px" }}>
-              <option>Alquilar</option>
-              <option>Comprar</option>
-            </select>
-          </div>
-
-          {/* 💲 PRECIO DESPLEGABLE */}
-          <div className="col-md-2 position-relative">
-            <button
-              className="form-select text-start"
-              style={{ borderRadius: "10px" }}
-              onClick={() => setShowPrice(!showPrice)}
-            >
-              Precio
-            </button>
-
-            {showPrice && (
-              <div
-                className="position-absolute p-3 rounded-4"
-                style={{
-                  top: "45px",
-                  left: 0,
-                  width: "220px",
-                  background: "#ffffff",
-                  boxShadow: "0 15px 40px rgba(0,0,0,0.15)",
-                  zIndex: 10,
-                }}
-              >
-                <input
-                  type="number"
-                  className="form-control mb-2"
-                  placeholder="Desde"
-                  value={priceFrom}
-                  onChange={(e) => setPriceFrom(e.target.value)}
-                />
-                <input
-                  type="number"
-                  className="form-control"
-                  placeholder="Hasta"
-                  value={priceTo}
-                  onChange={(e) => setPriceTo(e.target.value)}
-                />
-              </div>
-            )}
-          </div>
-
-          <div className="col-md-3 d-flex gap-2">
-            <button className="btn btn-outline-secondary w-100">
-              Más filtros
-            </button>
-            <button
-              className="btn w-100"
-              style={{
-                background: "#3E5E58",
-                color: "#fff",
-                fontWeight: "600",
-              }}
-            >
-              Crear alerta
-            </button>
-          </div>
-        </div>
-
-        {/* 📊 RESULTADOS */}
-        <p className="fw-semibold mb-3" style={{ color: "#3E5E58" }}>
-          {filteredProperties.length} resultados encontrados
-        </p>
-
-        {/* ❌ SIN RESULTADOS */}
-        {filteredProperties.length === 0 && (
-          <div className="alert alert-warning">
-            No se encontraron propiedades con esos filtros
-          </div>
-        )}
-
-        {/* 🏠 CARDS */}
-        {filteredProperties.map((p) => (
-          <div
-            key={p.id}
-            className="mb-4 rounded-4"
-            style={{
-              background: "#ffffff",
-              border: "1px solid #DCE7E2",
-              boxShadow: "0 15px 35px rgba(0,0,0,0.08)",
-              transition: "all .35s ease",
-            }}
-          >
-            <div className="row g-0 align-items-center">
-
-              <div className="col-md-4">
-                <img
-                  src={p.image}
-                  alt={p.title}
-                  style={{
-                    width: "100%",
-                    height: "240px",
-                    objectFit: "cover",
-                    borderRadius: "16px 0 0 16px",
-                  }}
-                />
-              </div>
-
-              <div className="col-md-8 p-4">
-                <small className="text-uppercase text-muted fw-semibold">
-                  {p.city}
-                </small>
-
-                <h6 className="fw-semibold mt-1">
-                  {p.location}
-                </h6>
-
-                <h5 style={{ color: "#3E5E58", fontWeight: "700" }}>
-                  USD {p.price.toLocaleString()}
-                </h5>
-
-                <p className="small text-muted">{p.details}</p>
-
-                <div className="d-flex gap-2 flex-wrap mt-3">
-                  <Link
-                    to={`/property/${p.id}`}
-                    className="btn btn-outline-secondary"
-                  >
-                    Ver detalles
-                  </Link>
-
-                  <a
-                    href="https://wa.me/593999999999"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="btn"
-                    style={{
-                      background: "#5F7F78",
-                      color: "#fff",
-                      fontWeight: "600",
-                    }}
-                  >
-                    WhatsApp
-                  </a>
-
-                  <Link
-                    to="/login"
-                    className="btn"
-                    style={{
-                      background: "#3E5E58",
-                      color: "#fff",
-                      fontWeight: "600",
-                    }}
-                  >
-                    Contactar
-                  </Link>
+    <div style={{ background: "#f8f9fa", minHeight: "100vh", fontFamily: "'Inter', sans-serif" }}>
+      
+      {/* MODAL BIENVENIDA */}
+      {showWelcome && (
+        <div className="modal d-block" style={{ backgroundColor: "rgba(0,0,0,0.6)", backdropFilter: "blur(10px)", zIndex: 3000 }}>
+          <div className="modal-dialog modal-lg modal-dialog-centered">
+            <div className="modal-content border-0 shadow-lg" style={{ borderRadius: "25px" }}>
+              <div className="row g-0">
+                <div className="col-md-6 d-none d-md-block">
+                  <img src="https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?auto=format&fit=crop&w=800" className="img-fluid h-100" style={{ objectFit: "cover", borderTopLeftRadius: "25px", borderBottomLeftRadius: "25px" }} alt="Home" />
+                </div>
+                <div className="col-md-6 p-5 text-center">
+                  <h2 className="fw-bold mb-3" style={{ color: "#ff5a00" }}>¡Bienvenido!</h2>
+                  <p className="text-muted mb-4">Encuentra el lugar ideal para vivir en Ecuador con contratos digitales seguros.</p>
+                  <button className="btn btn-lg w-100 text-white shadow-sm" style={{ background: "#ff5a00", borderRadius: "12px" }} onClick={() => setShowWelcome(false)}>Empezar búsqueda</button>
                 </div>
               </div>
-
             </div>
           </div>
-        ))}
+        </div>
+      )}
+
+      {/* NAVBAR / SEARCH BAR */}
+      <div className="bg-white border-bottom sticky-top shadow-sm py-3">
+        <div className="container">
+          <div className="row g-2 align-items-center">
+            <div className="col-md-4">
+              <TextField
+                fullWidth
+                variant="outlined"
+                placeholder="¿En qué ciudad o sector buscas?"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <SearchIcon />
+                    </InputAdornment>
+                  ),
+                }}
+              />
+            </div>
+            <div className="col-md-2">
+              <FormControl fullWidth>
+                <Select value={priceTo} onChange={(e) => setPriceTo(e.target.value)} displayEmpty>
+                  <MenuItem value="">Precio Máx.</MenuItem>
+                  <MenuItem value="300">USD 300</MenuItem>
+                  <MenuItem value="500">USD 500</MenuItem>
+                  <MenuItem value="1000">USD 1000</MenuItem>
+                </Select>
+              </FormControl>
+            </div>
+            <div className="col-md-2">
+              <FormControl fullWidth>
+                <Select value={habs} onChange={(e) => setHabs(e.target.value)} displayEmpty>
+                  <MenuItem value="">Habitaciones</MenuItem>
+                  <MenuItem value="1">1+ hab</MenuItem>
+                  <MenuItem value="2">2+ hab</MenuItem>
+                  <MenuItem value="3">3+ hab</MenuItem>
+                </Select>
+              </FormControl>
+            </div>
+            <div className="col-md-2 text-center">
+              <Button
+                variant="outlined"
+                fullWidth
+                onClick={() => { setSearch(""); setPriceTo(""); setHabs(""); setBanos(""); }}
+              >
+                Limpiar
+              </Button>
+            </div>
+          </div>
+        </div>
       </div>
+
+      <div className="container mt-5">
+        <h4 className="fw-bold mb-4">Resultados en Ecuador ({filtered.length})</h4>
+
+        <Grid container spacing={3}>
+          {filtered.length === 0 ? (
+            <div className="col-12 text-center py-5">
+              <img src="https://cdn-icons-png.flaticon.com/512/6134/6134065.png" width="100" className="mb-3 opacity-50" alt="Not found" />
+              <h5 className="text-muted">No encontramos inmuebles con esos filtros.</h5>
+            </div>
+          ) : (
+            filtered.map((p) => (
+              <Grid item xs={12} sm={6} md={4} key={p.id}>
+                <Card>
+                  <CardMedia
+                    component="img"
+                    alt={p.sector}
+                    height="200"
+                    image={p.imagen_url || "https://via.placeholder.com/400x250"}
+                    style={{ objectFit: "cover" }}
+                  />
+                  <CardContent>
+                    <Typography variant="h6">{p.sector}</Typography>
+                    <Typography color="textSecondary">{p.ciudad}</Typography>
+                    <Chip label={`$${p.precio}/mes`} color="primary" style={{ marginTop: "10px" }} />
+                    <Button
+                      fullWidth
+                      color="primary"
+                      variant="contained"
+                      style={{ marginTop: "15px" }}
+                      onClick={() => enviarSolicitud(p.id)}
+                    >
+                      Contactar
+                    </Button>
+                  </CardContent>
+                </Card>
+              </Grid>
+            ))
+          )}
+        </Grid>
+      </div>
+
+      <Footer />
     </div>
   );
 }

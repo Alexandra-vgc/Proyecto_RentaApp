@@ -1,137 +1,157 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
-import pg from 'pg';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
+import pool from './config/database.js'; // Asegúrate que el archivo se llame exactamente así
+
+// Importación de Rutas
+import solicitudesRoutes from './routes/solicitudesRoutes.js';
+import contratosRoutes from './routes/contratosRoutes.js';
+import pagosRoutes from './routes/pagosRoutes.js';
+import incumplimientosRoutes from './routes/incumplimientosRoutes.js';
 
 dotenv.config();
 
 const app = express();
-const PORT = 5000;
-const { Pool } = pg;
+const PORT = process.env.PORT || 5000;
 
-const pool = new Pool({
-  host: process.env.DB_HOST,
-  port: process.env.DB_PORT,
-  user: process.env.DB_USER,
-  password: process.env.DB_PASSWORD,
-  database: process.env.DB_NAME,
-});
+// --- Middlewares ---
+app.use(cors());
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
-// Verificar conexión a PostgreSQL
-pool.connect((err, client, release) => {
+// --- Verificación de Conexión a DB al arrancar ---
+pool.query('SELECT NOW()', (err, res) => {
   if (err) {
-    console.error('❌ Error conectando a PostgreSQL:', err.message);
+    console.error('❌ Error crítico: No se pudo conectar a PostgreSQL:', err.message);
   } else {
-    console.log('✅ PostgreSQL conectado exitosamente');
-    release();
+    console.log('✅ PostgreSQL conectado exitosamente a las:', res.rows[0].now);
   }
 });
 
-app.use(cors());
-app.use(express.json());
+// --- Ruta Base de prueba ---
+app.get('/', (req, res) => res.json({ message: 'MiRentaAPP API OK ✅' }));
 
-app.get('/', (req, res) => res.json({ message: 'API OK ✅' }));
-
-// LOGIN CON LOGS
+// ==========================================================
+// 1. AUTENTICACIÓN (Login y Registro)
+// ==========================================================
 app.post('/api/auth/login', async (req, res) => {
   try {
-    console.log('\n=== INICIO LOGIN ===');
-    console.log('Body recibido:', req.body);
-    
     const { email, password } = req.body;
-    console.log('Buscando usuario:', email);
-    
     const result = await pool.query('SELECT * FROM usuarios WHERE email = $1', [email]);
-    console.log('Filas encontradas:', result.rows.length);
-    
-    if (result.rows.length === 0) {
-      console.log('❌ Usuario no encontrado');
-      return res.status(401).json({ message: 'Credenciales inválidas' });
-    }
-    
+
+    if (result.rows.length === 0)
+      return res.status(401).json({ message: 'Usuario no encontrado' });
+
     const user = result.rows[0];
-    console.log('Usuario encontrado:', user.email);
-    console.log('Hash en BD:', user.password);
-    
     const isValid = await bcrypt.compare(password, user.password);
-    console.log('¿Contraseña válida?:', isValid);
-    
-    if (!isValid) {
-      console.log('❌ Contraseña incorrecta');
-      return res.status(401).json({ message: 'Credenciales inválidas' });
-    }
-    
-    const token = jwt.sign({ id: user.id }, process.env.JWT_SECRET, { expiresIn: '7d' });
-    console.log('✅ Login exitoso para:', user.email);
-    
-    res.json({ 
-      message: 'Login exitoso', 
-      token, 
-      user: { 
-        id: user.id, 
-        nombre: user.nombre, 
-        email: user.email, 
-        rol: user.rol 
-      } 
+
+    if (!isValid) return res.status(401).json({ message: 'Contraseña incorrecta' });
+
+    const token = jwt.sign(
+      { id: user.id, rol: user.rol }, 
+      process.env.JWT_SECRET || 'secret_provisional_123', 
+      { expiresIn: '7d' }
+    );
+
+    res.json({
+      token,
+      user: { id: user.id, nombre: user.nombre, email: user.email, rol: user.rol },
     });
   } catch (error) {
-    console.error('\n❌ ERROR EN LOGIN:');
-    console.error('Mensaje:', error.message);
-    console.error('Stack:', error.stack);
     res.status(500).json({ message: 'Error en login', error: error.message });
   }
 });
 
-// REGISTRO CON LOGS
 app.post('/api/auth/register', async (req, res) => {
   try {
-    console.log('\n=== INICIO REGISTRO ===');
-    console.log('Body recibido:', req.body);
-    
     const { nombre, email, password, rol } = req.body;
-    console.log('Verificando si existe:', email);
-    
     const existe = await pool.query('SELECT * FROM usuarios WHERE email = $1', [email]);
-    console.log('Emails existentes:', existe.rows.length);
-    
-    if (existe.rows.length > 0) {
-      console.log('❌ Email ya registrado');
-      return res.status(400).json({ message: 'Email ya registrado' });
-    }
-    
-    console.log('Encriptando contraseña...');
+
+    if (existe.rows.length > 0) return res.status(400).json({ message: 'Email ya registrado' });
+
     const hash = await bcrypt.hash(password, 10);
-    console.log('Hash generado:', hash);
-    
-    console.log('Insertando usuario...');
     const result = await pool.query(
-      'INSERT INTO usuarios (nombre, email, password, rol) VALUES ($1, $2, $3, $4) RETURNING *', 
+      'INSERT INTO usuarios (nombre, email, password, rol) VALUES ($1, $2, $3, $4) RETURNING id, nombre, email, rol',
       [nombre, email, hash, rol || 'inquilino']
     );
-    
-    console.log('Usuario creado:', result.rows[0].email);
-    
-    const token = jwt.sign({ id: result.rows[0].id }, process.env.JWT_SECRET, { expiresIn: '7d' });
-    console.log('✅ Registro exitoso');
-    
-    res.json({ 
-      message: 'Registrado', 
-      token, 
-      user: {
-        id: result.rows[0].id,
-        nombre: result.rows[0].nombre,
-        email: result.rows[0].email,
-        rol: result.rows[0].rol
-      }
-    });
+
+    const token = jwt.sign(
+        { id: result.rows[0].id }, 
+        process.env.JWT_SECRET || 'secret_provisional_123', 
+        { expiresIn: '7d' }
+    );
+    res.json({ message: 'Registrado con éxito', token, user: result.rows[0] });
   } catch (error) {
-    console.error('\n❌ ERROR EN REGISTRO:');
-    console.error('Mensaje:', error.message);
-    console.error('Stack:', error.stack);
     res.status(500).json({ message: 'Error en registro', error: error.message });
   }
 });
 
-app.listen(PORT, () => console.log(`🚀 Servidor en http://localhost:${PORT}`));
+// ==========================================================
+// 2. RUTAS DE FUNCIONALIDADES (Controladores corregidos)
+// ==========================================================
+app.use('/api/solicitudes', solicitudesRoutes);
+app.use('/api/contratos', contratosRoutes);
+app.use('/api/pagos', pagosRoutes);
+app.use('/api/incumplimientos', incumplimientosRoutes);
+
+// ==========================================================
+// 3. RUTAS DE ADMINISTRACIÓN / PROPIEDADES (CRUD)
+// ==========================================================
+app.get('/api/admin/propiedades', async (req, res) => {
+  try {
+    const result = await pool.query('SELECT * FROM propiedades ORDER BY id DESC');
+    res.json(result.rows);
+  } catch (error) {
+    res.status(500).json({ error: "Error al obtener propiedades" });
+  }
+});
+
+app.post('/api/admin/propiedades', async (req, res) => {
+  try {
+   const { sector, ciudad, precio, habitaciones, banos, descripcion, imagen_url, propietario_id } = req.body;
+
+const result = await pool.query(
+  'INSERT INTO propiedades (sector, ciudad, precio, habitaciones, banos, descripcion, imagen_url, propietario_id) VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING *',
+  [sector, ciudad, precio, habitaciones || 0, banos || 0, descripcion || '', imagen_url, propietario_id]
+);
+    res.status(201).json(result.rows[0]);
+  } catch (error) {
+    res.status(500).json({ error: "Error al crear la propiedad" });
+  }
+});
+
+app.put('/api/admin/propiedades/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { sector, ciudad, precio, habitaciones, banos, imagen_url } = req.body;
+    const result = await pool.query(
+      'UPDATE propiedades SET sector=$1, ciudad=$2, precio=$3, habitaciones=$4, banos=$5, imagen_url=$6 WHERE id=$7 RETURNING *',
+      [sector, ciudad, precio, habitaciones, banos, imagen_url, id]
+    );
+    res.json(result.rows[0]);
+  } catch (error) {
+    res.status(500).json({ error: "Error al actualizar propiedad" });
+  }
+});
+
+app.delete('/api/admin/propiedades/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    await pool.query('DELETE FROM propiedades WHERE id = $1', [id]);
+    res.json({ message: 'Propiedad eliminada correctamente' });
+  } catch (error) {
+    res.status(500).json({ error: "Error al eliminar propiedad" });
+  }
+});
+
+// --- Middleware para rutas no encontradas (404) ---
+app.use((req, res) => {
+  res.status(404).json({ message: "La ruta solicitada no existe." });
+});
+
+// --- Iniciar Servidor ---
+app.listen(PORT, () => {
+  console.log(`🚀 Servidor corriendo en http://localhost:${PORT}`);
+});

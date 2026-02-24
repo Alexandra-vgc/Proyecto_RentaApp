@@ -1,63 +1,63 @@
-import { BrowserRouter as Router, Routes, Route, Navigate, Link } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { useState } from "react";
 
+// Componentes
 import WelcomeModal from "./components/WelcomeModal";
+import Navbar from "./components/Navbar"; 
 import Login from './components/login';
 import Register from './components/Register';
 
+// Páginas
 import PublicHome from "./pages/PublicHome";
 import PropertyDetail from "./pages/PropertyDetail";
+import AdminDashboard from "./components/admin/AdminDashboard"; 
 
+// Servicios
 import authService from './services/authservice';
 
 function App() {
-  const [showWelcome, setShowWelcome] = useState(!authService.isAuthenticated());
+  // Quitamos la lógica automática del modal por ahora para que no estorbe
+  const [showWelcome, setShowWelcome] = useState(false); 
+
+  // Función de protección mejorada
+const AdminRoute = ({ children }) => {
+  const user = JSON.parse(localStorage.getItem('user'));
+  const token = localStorage.getItem('token');
+
+  // Permitir acceso si el rol es admin O propietario
+  if (token && (user?.rol === 'admin' || user?.rol === 'propietario')) {
+    return children;
+  }
+  
+  return <Navigate to="/login" />;
+};
 
   return (
     <Router>
-
-      {/* BARRA SUPERIOR SIMPLE */}
-      {!authService.isAuthenticated() && (
-        <div style={{
-          borderBottom: "1px solid #ddd",
-          padding: "10px 20px",
-          display: "flex",
-          justifyContent: "space-between"
-        }}>
-          <strong>MiRentaAPP</strong>
-
-          <div>
-            <Link to="/login" style={{ marginRight: "15px" }}>
-              Iniciar sesión
-            </Link>
-            <Link to="/register">
-              Registrarse
-            </Link>
-          </div>
-        </div>
-      )}
-
-      {/* MODAL DE BIENVENIDA */}
-      {showWelcome && !authService.isAuthenticated() && (
-        <WelcomeModal onFinish={() => setShowWelcome(false)} />
-      )}
+      <Navbar />
 
       <Routes>
-
-        {/* 🌍 PÚBLICO */}
+        {/* Rutas Públicas */}
         <Route path="/" element={<PublicHome />} />
         <Route path="/property/:id" element={<PropertyDetail />} />
-
-        {/* 🔐 AUTH */}
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
 
-        {/* ❌ CUALQUIER OTRA */}
-        <Route path="*" element={<Navigate to="/" />} />
+        {/* Ruta del Administrador */}
+        <Route 
+          path="/admin-dashboard" 
+          element={
+            <AdminRoute>
+              <AdminDashboard />
+            </AdminRoute>
+          } 
+        />
 
+        {/* Redirección por defecto */}
+        <Route path="*" element={<Navigate to="/" />} />
       </Routes>
     </Router>
   );
 }
 
-export default App;
+export default App; // <--- ESTO ES VITAL
