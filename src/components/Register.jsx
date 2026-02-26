@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import authService from '../services/authservice';
+import authService from '../services/authService';
 import './Login.css';
 
 function Register() {
@@ -23,19 +23,28 @@ function Register() {
     setError('');
   };
 
+  // ✅ Función de seguridad: Validar contraseña fuerte
+  const validarPassword = (password) => {
+    // Mínimo 8 caracteres, al menos 1 letra, 1 número y 1 carácter especial
+    const regex = /^(?=.*[A-Za-z])(?=.*\d)(?=.*[@$!%*#?&.])[A-Za-z\d@$!%*#?&.]{8,}$/;
+    return regex.test(password);
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
     setError('');
 
+    // 1. Validar coincidencia
     if (formData.password !== formData.confirmPassword) {
       setError('Las contraseñas no coinciden');
       setLoading(false);
       return;
     }
 
-    if (formData.password.length < 6) {
-      setError('La contraseña debe tener al menos 6 caracteres');
+    // 2. Validar seguridad
+    if (!validarPassword(formData.password)) {
+      setError('La contraseña debe tener mínimo 8 caracteres, incluir letras, números y un carácter especial (@$!%*#?&.)');
       setLoading(false);
       return;
     }
@@ -48,6 +57,7 @@ function Register() {
         formData.rol
       );
       alert('✅ Registro exitoso!');
+      // Te lleva al login para que inicies sesión y de ahí te redirija al dashboard correcto
       navigate('/login');
     } catch (err) {
       setError(err.message || 'Error al registrar usuario');
@@ -113,11 +123,14 @@ function Register() {
                 type="password"
                 id="password"
                 name="password"
-                placeholder="••••••••"
+                placeholder="Ej: Rentapp2024!"
                 value={formData.password}
                 onChange={handleChange}
                 required
               />
+              <small style={{ color: '#888', fontSize: '0.8rem', marginTop: '4px', display: 'block' }}>
+                Mín. 8 caracteres, números y un símbolo.
+              </small>
             </div>
 
             <div className="form-group">
@@ -126,7 +139,7 @@ function Register() {
                 type="password"
                 id="confirmPassword"
                 name="confirmPassword"
-                placeholder="••••••••"
+                placeholder="Repite tu contraseña"
                 value={formData.confirmPassword}
                 onChange={handleChange}
                 required
@@ -151,6 +164,7 @@ function Register() {
                 }}
               >
                 <option value="inquilino">Inquilino</option>
+                <option value="comprador">Comprador</option> {/* ✅ NUEVO ROL */}
                 <option value="propietario">Propietario</option>
               </select>
             </div>

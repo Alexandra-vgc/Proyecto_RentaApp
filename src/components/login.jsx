@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import authService from '../services/authService';
 import './Login.css';
-import loginImg from '../assets/login.png'; // ✅ Ruta corregida
+import loginImg from '../assets/login.png'; 
 
 function Login() {
   const navigate = useNavigate();
@@ -28,8 +28,16 @@ function Login() {
 
     try {
       await authService.login(formData.email, formData.password);
-      navigate('/dashboard'); 
-      console.log('Usuario:', authService.getCurrentUser());
+      
+      const user = authService.getCurrentUser();
+      
+      // ✅ DECISIÓN DE RUTA CORREGIDA
+      if (user.rol === 'admin' || user.rol === 'propietario') {
+        navigate('/admin'); // Panel de tu compañera
+      } else {
+        navigate('/dashboard'); // Panel tuyo (para Inquilinos y Compradores)
+      }
+      
     } catch (err) {
       setError(err.message || 'Error al iniciar sesión');
     } finally {
@@ -39,18 +47,12 @@ function Login() {
 
   return (
     <div className="login-container">
-
-      {/* Lado izquierdo con la imagen */}
       <div className="login-left">
         <div className="login-illustration">
-          <img 
-            src={loginImg} 
-            alt="Login" 
-          />
+          <img src={loginImg} alt="Login" />
         </div>
       </div>
 
-      {/* Lado derecho con el formulario */}
       <div className="login-right">
         <div className="login-box">
           <div className="login-header">
@@ -67,46 +69,24 @@ function Login() {
 
             <div className="form-group">
               <label htmlFor="email">Email</label>
-              <input
-                type="email"
-                id="email"
-                name="email"
-                placeholder="correo@ejemplo.com"
-                value={formData.email}
-                onChange={handleChange}
-                required
-              />
+              <input type="email" id="email" name="email" placeholder="correo@ejemplo.com" value={formData.email} onChange={handleChange} required />
             </div>
 
             <div className="form-group">
               <label htmlFor="password">Contraseña</label>
-              <input
-                type="password"
-                id="password"
-                name="password"
-                placeholder="••••••••"
-                value={formData.password}
-                onChange={handleChange}
-                required
-              />
+              <input type="password" id="password" name="password" placeholder="Ej: Rentapp2024!" value={formData.password} onChange={handleChange} required />
             </div>
 
-            <button 
-              type="submit" 
-              className="btn-login"
-              disabled={loading}
-            >
+            <button type="submit" className="btn-login" disabled={loading}>
               {loading ? 'Iniciando sesión...' : 'Iniciar Sesión'}
             </button>
 
             <div className="register-link">
-              ¿No tienes cuenta?{' '}
-              <Link to="/register">Regístrate aquí</Link>
+              ¿No tienes cuenta? <Link to="/register">Regístrate aquí</Link>
             </div>
           </form>
         </div>
       </div>
-
     </div>
   );
 }

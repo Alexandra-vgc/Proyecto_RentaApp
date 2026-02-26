@@ -25,7 +25,6 @@ function InquilinoDashboard() {
   const cargarDashboard = async () => {
     try {
       const token = authService.getToken();
-      // IMPORTANTE: Asegúrate que esta URL sea /api/inquilino o /api/comprador según el rol
       const apiBase = tipoUsuario === 'comprador' ? '/api/comprador' : '/api/inquilino';
       const response = await axios.get(`http://localhost:5000${apiBase}/mi-dashboard`, {
         headers: { Authorization: `Bearer ${token}` }
@@ -56,7 +55,6 @@ function InquilinoDashboard() {
   const labelPago = esComprador ? 'Cuota Mensual' : 'Renta Mensual';
   const labelPendientes = esComprador ? 'Cuotas Pendientes' : 'Pagos Pendientes';
 
-  // Extraemos las estadísticas que vienen del nuevo Backend optimizado
   const stats = dashboardData?.estadisticas || {};
 
   return (
@@ -64,7 +62,14 @@ function InquilinoDashboard() {
       {/* NAVBAR */}
       <nav className="dashboard-nav">
         <div className="nav-brand">
-          <h2>🏠 MiRentaApp</h2>
+          {/* ✅ Título interactivo para volver al inicio */}
+          <h2 
+            onClick={() => navigate('/')} 
+            style={{ cursor: 'pointer' }}
+            title="Volver al inicio"
+          >
+            🏠 MiRentaApp
+          </h2>
           <span className="user-badge">{esComprador ? 'Comprador' : 'Inquilino'}</span>
         </div>
         <div className="nav-user">

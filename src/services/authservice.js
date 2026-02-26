@@ -14,6 +14,9 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
+// ✅ NUEVO: Creamos un "timbre" para avisar cuando cambie el estado de la sesión
+const authEvent = new Event('authStateChange');
+
 export const authService = {
   async login(email, password) {
     try {
@@ -21,6 +24,8 @@ export const authService = {
       if (response.data.token) {
         localStorage.setItem('token', response.data.token);
         localStorage.setItem('user', JSON.stringify(response.data.user));
+        // ✅ NUEVO: Tocamos el timbre al iniciar sesión
+        window.dispatchEvent(authEvent);
       }
       return response.data;
     } catch (error) {
@@ -28,12 +33,14 @@ export const authService = {
     }
   },
 
-  async register(nombre, email, password, rol = 'inquilino', tipo = 'inquilino') {
+  async register(nombre, email, password, rol = 'inquilino') {
     try {
-      const response = await api.post('/register', { nombre, email, password, rol, tipo });
+      const response = await api.post('/register', { nombre, email, password, rol });
       if (response.data.token) {
         localStorage.setItem('token', response.data.token);
         localStorage.setItem('user', JSON.stringify(response.data.user));
+        // ✅ NUEVO: Tocamos el timbre al registrarse
+        window.dispatchEvent(authEvent);
       }
       return response.data;
     } catch (error) {
@@ -44,6 +51,8 @@ export const authService = {
   logout() {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
+    // ✅ NUEVO: Tocamos el timbre al cerrar sesión
+    window.dispatchEvent(authEvent);
   },
 
   getCurrentUser() {
@@ -55,39 +64,22 @@ export const authService = {
     return !!localStorage.getItem('token');
   },
 
-  getInquilinoId() {
-    const user = this.getCurrentUser();
-    return user?.inquilino_id || null;
-  },
-
-  getCompradorId() {
-    const user = this.getCurrentUser();
-    return user?.comprador_id || null;
-  },
-
   getToken() {
     return localStorage.getItem('token');
   },
 
-  // NUEVO: Detecta automáticamente si es inquilino o comprador
   getApiBase() {
     const user = this.getCurrentUser();
-    if (user?.comprador_id) {
+    if (user?.rol === 'comprador') {
       return 'http://localhost:5000/api/comprador';
     } else {
       return 'http://localhost:5000/api/inquilino';
     }
   },
 
-  // NUEVO: Obtiene el tipo de usuario
   getTipoUsuario() {
     const user = this.getCurrentUser();
-    if (user?.comprador_id) {
-      return 'comprador';
-    } else if (user?.inquilino_id) {
-      return 'inquilino';
-    }
-    return null;
+    return user?.rol || 'inquilino';
   }
 };
 

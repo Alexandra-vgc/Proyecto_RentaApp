@@ -1,6 +1,34 @@
+import { useState } from "react";
+import axios from "axios";
 import "./DepartmentCard.css";
 
 const DepartmentCard = ({ dept }) => {
+  const [solicitarLoading, setSolicitarLoading] = useState(false); // Estado para manejar el botón de carga
+
+  // Función para manejar la solicitud
+  const handleSolicitud = async () => {
+    const nombre = prompt("Para contactar al propietario, ingresa tu nombre completo:");
+    if (!nombre) return; // Si el nombre no es ingresado, no se envía la solicitud
+
+    setSolicitarLoading(true); // Habilitamos el estado de carga para evitar múltiples clics
+
+    try {
+      const response = await axios.post("http://localhost:5000/api/solicitudes", {
+        propiedad_id: dept.id,
+        nombre_cliente: nombre,
+      });
+
+      if (response.status === 201 || response.status === 200) {
+        alert("✅ Solicitud enviada con éxito. El propietario se contactará contigo pronto.");
+      }
+    } catch (error) {
+      console.error("Error al enviar solicitud:", error.response?.data || error.message);
+      alert(`❌ Error: ${error.response?.data?.error || "Intenta más tarde"}`);
+    } finally {
+      setSolicitarLoading(false); // Desactivamos el estado de carga
+    }
+  };
+
   return (
     <div className="dept-card">
       <img src={dept.image} alt={dept.title} className="dept-image" />
@@ -23,7 +51,14 @@ const DepartmentCard = ({ dept }) => {
             WhatsApp
           </a>
 
-          <button className="btn-primary">Contactar</button>
+          {/* Botón para enviar solicitud */}
+          <button
+            className="btn-primary"
+            onClick={handleSolicitud}
+            disabled={solicitarLoading}
+          >
+            {solicitarLoading ? "Enviando..." : "Solicitar Departamento"}
+          </button>
         </div>
       </div>
     </div>

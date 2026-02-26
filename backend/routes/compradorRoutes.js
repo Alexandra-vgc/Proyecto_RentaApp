@@ -16,7 +16,7 @@ const pool = new Pool({
   database: process.env.DB_NAME,
 });
 
-// MI DASHBOARD
+// MI DASHBOARD COMPRADOR (Con lógica de estadísticas y barra de progreso)
 router.get('/mi-dashboard', verifyToken, async (req, res) => {
   try {
     const compradorId = req.user.comprador_id;
@@ -25,69 +25,61 @@ router.get('/mi-dashboard', verifyToken, async (req, res) => {
       return res.status(400).json({ message: 'Usuario no asociado a un comprador' });
     }
 
-    const miContrato = await pool.query(`
-      SELECT c.*, d.codigo, d.direccion, d.precio_mensual
+    const contratoRes = await pool.query(`
+      SELECT c.*, p.codigo, p.direccion 
       FROM contratos c
-      JOIN departamentos d ON c.departamento_id = d.id
+      JOIN propiedades p ON c.propiedad_id = p.id
       WHERE c.comprador_id = $1 AND c.estado = 'activo'
-      ORDER BY c.fecha_inicio DESC
       LIMIT 1
     `, [compradorId]);
 
-    const cuotasPendientes = await pool.query(`
-      SELECT COUNT(*) as total
-      FROM pagos p
-      JOIN contratos c ON p.contrato_id = c.id
-      WHERE c.comprador_id = $1 AND p.estado IN ('pendiente', 'atrasado')
-    `, [compradorId]);
+    const contrato = contratoRes.rows[0];
 
-    const ultimoPago = await pool.query(`
-      SELECT p.*, c.monto_mensual
-      FROM pagos p
-      JOIN contratos c ON p.contrato_id = c.id
-      WHERE c.comprador_id = $1
-      ORDER BY p.created_at DESC
-      LIMIT 1
-    `, [compradorId]);
-
-    const proximoPago = await pool.query(`
-      SELECT p.*
-      FROM pagos p
-      JOIN contratos c ON p.contrato_id = c.id
-      WHERE c.comprador_id = $1 AND p.estado = 'pendiente'
-      ORDER BY p.fecha_vencimiento ASC
-      LIMIT 1
-    `, [compradorId]);
-
-    // Calcular saldo pendiente
-    let saldoPendiente = 0;
-    if (miContrato.rows.length > 0) {
-      const pagado = await pool.query(`
-        SELECT COALESCE(SUM(monto), 0) as total
-        FROM pagos p
-        JOIN contratos c ON p.contrato_id = c.id
-        WHERE c.comprador_id = $1 AND p.estado = 'pagado'
-      `, [compradorId]);
-      
-      const precioTotal = miContrato.rows[0].precio_total || 0;
-      saldoPendiente = precioTotal - parseFloat(pagado.rows[0].total);
+    if (!contrato) {
+      return res.json({ message: 'No tienes contratos de compra activos', contrato: null });
     }
+
+    // Resumen financiero optimizado en una consulta
+    const finanzasRes = await pool.query(`
+      SELECT 
+        COALESCE(SUM(CASE WHEN estado = 'pagado' THEN monto ELSE 0 END), 0) as total_abonado,
+        COUNT(CASE WHEN estado IN ('pendiente', 'atrasado') THEN 1 END) as cuotas_pendientes
+      FROM pagos 
+      WHERE contrato_id = $1
+    `, [contrato.id]);
+
+    const { total_abonado, cuotas_pendientes } = finanzasRes.rows[0];
+    
+    const precioTotal = parseFloat(contrato.precio_total || 0);
+    const abonado = parseFloat(total_abonado);
+    const saldoPendiente = precioTotal - abonado;
+    const porcentajeProgreso = precioTotal > 0 ? ((abonado / precioTotal) * 100).toFixed(2) : 0;
+
+    const proximoPagoRes = await pool.query(`
+      SELECT * FROM pagos 
+      WHERE contrato_id = $1 AND estado = 'pendiente'
+      ORDER BY fecha_vencimiento ASC LIMIT 1
+    `, [contrato.id]);
 
     res.json({
       tipoUsuario: 'comprador',
-      contrato: miContrato.rows[0] || null,
-      pagosPendientes: parseInt(cuotasPendientes.rows[0].total),
-      ultimoPago: ultimoPago.rows[0] || null,
-      proximoPago: proximoPago.rows[0] || null,
-      saldoPendiente: saldoPendiente
+      contrato: contrato,
+      estadisticas: {
+        precioTotal: precioTotal,
+        totalAbonado: abonado,
+        saldoPendiente: saldoPendiente,
+        porcentajeProgreso: porcentajeProgreso,
+        cuotasPendientes: parseInt(cuotas_pendientes || 0)
+      },
+      proximoPago: proximoPagoRes.rows[0] || null
     });
   } catch (error) {
-    console.error('❌ Error:', error);
+    console.error('❌ Error en Dashboard:', error);
     res.status(500).json({ message: 'Error al obtener dashboard' });
   }
 });
 
-// MI DEPARTAMENTO
+// MI DEPARTAMENTO (AHORA PROPIEDAD)
 router.get('/mi-departamento', verifyToken, async (req, res) => {
   try {
     const compradorId = req.user.comprador_id;
@@ -97,15 +89,18 @@ router.get('/mi-departamento', verifyToken, async (req, res) => {
     }
 
     const result = await pool.query(`
-      SELECT d.*
-      FROM departamentos d
-      JOIN contratos c ON d.id = c.departamento_id
+      SELECT 
+        p.*, 
+        p.habitaciones AS numero_habitaciones, 
+        p.banos AS numero_banos
+      FROM propiedades p
+      JOIN contratos c ON p.id = c.propiedad_id
       WHERE c.comprador_id = $1 AND c.estado = 'activo'
       LIMIT 1
     `, [compradorId]);
 
     if (result.rows.length === 0) {
-      return res.status(404).json({ message: 'No tienes un departamento asignado' });
+      return res.status(404).json({ message: 'No tienes una propiedad asignada' });
     }
 
     res.json(result.rows[0]);
@@ -127,13 +122,13 @@ router.get('/mi-contrato', verifyToken, async (req, res) => {
     const result = await pool.query(`
       SELECT 
         c.*,
-        d.codigo as departamento_codigo,
-        d.direccion as departamento_direccion,
-        d.numero_habitaciones,
-        d.numero_banos,
-        d.metros_cuadrados
+        p.codigo as departamento_codigo,
+        p.direccion as departamento_direccion,
+        p.habitaciones as numero_habitaciones,
+        p.banos as numero_banos,
+        p.metros_cuadrados
       FROM contratos c
-      JOIN departamentos d ON c.departamento_id = d.id
+      JOIN propiedades p ON c.propiedad_id = p.id
       WHERE c.comprador_id = $1 AND c.estado = 'activo'
       ORDER BY c.fecha_inicio DESC
       LIMIT 1
@@ -160,10 +155,10 @@ router.get('/mis-pagos', verifyToken, async (req, res) => {
     }
 
     const result = await pool.query(`
-      SELECT p.*, c.monto_mensual, d.codigo as departamento_codigo
+      SELECT p.*, c.monto_mensual, pr.codigo as departamento_codigo
       FROM pagos p
       JOIN contratos c ON p.contrato_id = c.id
-      JOIN departamentos d ON c.departamento_id = d.id
+      JOIN propiedades pr ON c.propiedad_id = pr.id
       WHERE c.comprador_id = $1
       ORDER BY p.mes DESC
     `, [compradorId]);
@@ -175,7 +170,7 @@ router.get('/mis-pagos', verifyToken, async (req, res) => {
   }
 });
 
-// REGISTRAR PAGO
+// REGISTRAR PAGO (CUOTA)
 router.post('/mis-pagos', verifyToken, async (req, res) => {
   try {
     const compradorId = req.user.comprador_id;
@@ -221,12 +216,12 @@ router.post('/mis-pagos', verifyToken, async (req, res) => {
     ]);
     
     res.status(201).json({
-      message: 'Pago registrado exitosamente',
+      message: 'Cuota registrada exitosamente',
       pago: result.rows[0]
     });
   } catch (error) {
     console.error('❌ Error:', error);
-    res.status(500).json({ message: 'Error al registrar pago', error: error.message });
+    res.status(500).json({ message: 'Error al registrar cuota', error: error.message });
   }
 });
 

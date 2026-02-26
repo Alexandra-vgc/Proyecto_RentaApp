@@ -16,7 +16,7 @@ const pool = new Pool({
   database: process.env.DB_NAME,
 });
 
-// MI DASHBOARD
+// MI DASHBOARD INQUILINO
 router.get('/mi-dashboard', verifyToken, async (req, res) => {
   try {
     const inquilinoId = req.user.inquilino_id;
@@ -26,9 +26,9 @@ router.get('/mi-dashboard', verifyToken, async (req, res) => {
     }
 
     const miContrato = await pool.query(`
-      SELECT c.*, d.codigo, d.direccion, d.precio_mensual
+      SELECT c.*, p.codigo, p.direccion, p.precio_mensual
       FROM contratos c
-      JOIN departamentos d ON c.departamento_id = d.id
+      JOIN propiedades p ON c.propiedad_id = p.id
       WHERE c.inquilino_id = $1 AND c.estado = 'activo'
       ORDER BY c.fecha_inicio DESC
       LIMIT 1
@@ -45,8 +45,8 @@ router.get('/mi-dashboard', verifyToken, async (req, res) => {
       SELECT p.*, c.monto_mensual
       FROM pagos p
       JOIN contratos c ON p.contrato_id = c.id
-      WHERE c.inquilino_id = $1
-      ORDER BY p.created_at DESC
+      WHERE c.inquilino_id = $1 AND p.estado = 'pagado'
+      ORDER BY p.fecha_pago DESC
       LIMIT 1
     `, [inquilinoId]);
 
@@ -59,10 +59,15 @@ router.get('/mi-dashboard', verifyToken, async (req, res) => {
       LIMIT 1
     `, [inquilinoId]);
 
+    const totalPendientes = parseInt(pagosPendientes.rows[0].total);
+
     res.json({
       tipoUsuario: 'inquilino',
       contrato: miContrato.rows[0] || null,
-      pagosPendientes: parseInt(pagosPendientes.rows[0].total),
+      pagosPendientes: totalPendientes,
+      estadisticas: {
+        cuotasPendientes: totalPendientes // Para mantener compatibilidad con el nuevo frontend
+      },
       ultimoPago: ultimoPago.rows[0] || null,
       proximoPago: proximoPago.rows[0] || null
     });
@@ -72,7 +77,7 @@ router.get('/mi-dashboard', verifyToken, async (req, res) => {
   }
 });
 
-// MI DEPARTAMENTO
+// MI DEPARTAMENTO (AHORA PROPIEDAD)
 router.get('/mi-departamento', verifyToken, async (req, res) => {
   try {
     const inquilinoId = req.user.inquilino_id;
@@ -82,9 +87,12 @@ router.get('/mi-departamento', verifyToken, async (req, res) => {
     }
 
     const result = await pool.query(`
-      SELECT d.*
-      FROM departamentos d
-      JOIN contratos c ON d.id = c.departamento_id
+      SELECT 
+        p.*, 
+        p.habitaciones AS numero_habitaciones, 
+        p.banos AS numero_banos
+      FROM propiedades p
+      JOIN contratos c ON p.id = c.propiedad_id
       WHERE c.inquilino_id = $1 AND c.estado = 'activo'
       LIMIT 1
     `, [inquilinoId]);
@@ -112,13 +120,13 @@ router.get('/mi-contrato', verifyToken, async (req, res) => {
     const result = await pool.query(`
       SELECT 
         c.*,
-        d.codigo as departamento_codigo,
-        d.direccion as departamento_direccion,
-        d.numero_habitaciones,
-        d.numero_banos,
-        d.metros_cuadrados
+        p.codigo as departamento_codigo,
+        p.direccion as departamento_direccion,
+        p.habitaciones as numero_habitaciones,
+        p.banos as numero_banos,
+        p.metros_cuadrados
       FROM contratos c
-      JOIN departamentos d ON c.departamento_id = d.id
+      JOIN propiedades p ON c.propiedad_id = p.id
       WHERE c.inquilino_id = $1 AND c.estado = 'activo'
       ORDER BY c.fecha_inicio DESC
       LIMIT 1
@@ -145,10 +153,10 @@ router.get('/mis-pagos', verifyToken, async (req, res) => {
     }
 
     const result = await pool.query(`
-      SELECT p.*, c.monto_mensual, d.codigo as departamento_codigo
+      SELECT p.*, c.monto_mensual, pr.codigo as departamento_codigo
       FROM pagos p
       JOIN contratos c ON p.contrato_id = c.id
-      JOIN departamentos d ON c.departamento_id = d.id
+      JOIN propiedades pr ON c.propiedad_id = pr.id
       WHERE c.inquilino_id = $1
       ORDER BY p.mes DESC
     `, [inquilinoId]);
