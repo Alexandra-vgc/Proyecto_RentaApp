@@ -110,6 +110,23 @@ app.get('/api/admin/propiedades', async (req, res) => {
     res.status(500).json({ error: "Error al obtener propiedades" });
   }
 });
+// server.js
+app.get('/api/admin/propiedades/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    // Buscamos en la tabla 'propiedades' usando la columna 'id' que vi en tu captura
+    const result = await pool.query("SELECT * FROM propiedades WHERE id = $1", [id]);
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ message: "Propiedad no encontrada" });
+    }
+    
+    res.json(result.rows[0]); 
+  } catch (error) {
+    console.error("Error al obtener detalle:", error);
+    res.status(500).json({ error: "Error interno del servidor" });
+  }
+});
 
 app.post('/api/admin/propiedades', async (req, res) => {
   try {

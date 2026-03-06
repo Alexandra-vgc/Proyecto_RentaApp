@@ -1,94 +1,129 @@
-import { useState, useEffect } from "react";
-import { useParams, Link } from "react-router-dom";
+import React, { useState, useEffect } from "react";
+import { useParams, useNavigate } from "react-router-dom";
 import axios from "axios";
+import authService from "../services/authService"; 
+import { 
+  Box, Container, Typography, Button, Grid, Paper, Stack, Divider, 
+  CircularProgress, Dialog, DialogTitle, DialogContent, TextField, DialogActions 
+} from "@mui/material";
+import { Bed, Bathtub, LocationOn, ArrowBack, Event } from "@mui/icons-material";
+
+const palette = { 
+  fondoPrincipal: "#E8DCCB", titulos: "#4E5B3C", 
+  botonPrincipal: "#C66A3D", textoSecundario: "#BFA58A", detallesDorado: "#C9A227" 
+};
 
 export default function PropertyDetail() {
-  const { id } = useParams(); // Obtenemos el ID de la URL
+  const { id } = useParams(); 
+  const navigate = useNavigate();
   const [property, setProperty] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [openModal, setOpenModal] = useState(false);
+  
+  // Datos del formulario de cita
+  const [citaForm, setCitaForm] = useState({
+    nombre_cliente: "",
+    fecha_cita: "",
+    hora_cita: ""
+  });
+
+  const currentUser = authService.getCurrentUser();
 
   useEffect(() => {
     const fetchProperty = async () => {
       try {
-        const res = await axios.get(`http://localhost:5000/api/propiedades/${id}`);
+        setLoading(true);
+        const res = await axios.get(`http://localhost:5000/api/admin/propiedades/${id}`);
         setProperty(res.data);
-        setLoading(false);
-      } catch (error) {
-        console.error("Error al cargar el detalle:", error);
+      } catch (err) {
+        console.error("Error al cargar:", err);
+        setProperty(null);
+      } finally {
         setLoading(false);
       }
     };
-    fetchProperty();
+    if (id) fetchProperty();
   }, [id]);
 
-  if (loading) return <div className="container pt-5 text-center">Cargando detalles...</div>;
-  if (!property) return <div className="container pt-5 text-center">Propiedad no encontrada.</div>;
+  const handleOpenCita = () => {
+    // Si está logueado, precargamos su nombre
+    if (currentUser) {
+      setCitaForm({ ...citaForm, nombre_cliente: currentUser.nombre });
+    }
+    setOpenModal(true);
+  };
+
+  const confirmarCita = async () => {
+    if (!citaForm.nombre_cliente || !citaForm.fecha_cita || !citaForm.hora_cita) {
+      alert("Por favor completa todos los campos.");
+      return;
+    }
+
+    try {
+      await axios.post("http://localhost:5000/api/solicitudes", {
+        propiedad_id: id,
+        arrendatario_id: currentUser ? currentUser.id : null,
+        nombre_cliente: citaForm.nombre_cliente,
+        fecha_cita: citaForm.fecha_cita,
+        hora_cita: citaForm.hora_cita,
+        estado: "pendiente"
+      });
+
+      alert(`✅ Cita agendada para ${citaForm.nombre_cliente}. Nos vemos el ${citaForm.fecha_cita}`);
+      setOpenModal(false);
+      navigate("/");
+    } catch (error) {
+      alert("Error al conectar con el servidor.");
+    }
+  };
+
+  if (loading) return <Box sx={{ display: 'flex', justifyContent: 'center', mt: 10 }}><CircularProgress /></Box>;
+  if (!property) return <Typography variant="h5" textAlign="center" mt={10}>Propiedad no encontrada.</Typography>;
 
   return (
-    <div style={{ background: "#F1F5F3", minHeight: "100vh", paddingBottom: "50px" }}>
-      <div className="container pt-4">
-        {/* BOTÓN REGRESAR */}
-        <Link to="/" className="btn btn-sm mb-3" style={{ color: "#3E5E58", fontWeight: "600" }}>
-          ← Volver al listado
-        </Link>
+    <Box sx={{ bgcolor: palette.fondoPrincipal, minHeight: "100vh", py: 5 }}>
+      <Container maxWidth="lg">
+        <Button startIcon={<ArrowBack />} onClick={() => navigate(-1)} sx={{ color: palette.titulos, mb: 3 }}>Volver</Button>
+        <Grid container spacing={4}>
+          <Grid item xs={12} md={7}>
+            <Paper elevation={0} sx={{ border: `1px solid ${palette.textoSecundario}33`, overflow: 'hidden' }}>
+              <img src={property.imagen_url || "https://via.placeholder.com/800"} alt={property.sector} style={{ width: '100%', height: '450px', objectFit: 'cover' }} />
+            </Paper>
+          </Grid>
+          <Grid item xs={12} md={5}>
+            <Typography variant="h3" sx={{ color: palette.titulos, fontWeight: 900, mb: 1 }}>{property.sector}</Typography>
+            <Typography variant="h4" sx={{ color: palette.botonPrincipal, fontWeight: 900, mb: 4 }}>${property.precio_mensual} / mes</Typography>
+            <Divider sx={{ mb: 4 }} />
+            <Stack spacing={2} sx={{ mb: 4 }}>
+              <Stack direction="row" spacing={2}><Bed sx={{ color: palette.detallesDorado }} /><Typography><strong>{property.habitaciones}</strong> Habitaciones</Typography></Stack>
+              <Stack direction="row" spacing={2}><Bathtub sx={{ color: palette.detallesDorado }} /><Typography><strong>{property.banos}</strong> Baños</Typography></Stack>
+            </Stack>
+            <Typography variant="body1" sx={{ color: palette.titulos, mb: 5 }}>{property.descripcion}</Typography>
+            
+            <Button fullWidth variant="contained" startIcon={<Event />} onClick={handleOpenCita} sx={{ bgcolor: palette.botonPrincipal, py: 2 }}>
+              Agendar cita de visita
+            </Button>
+          </Grid>
+        </Grid>
+      </Container>
 
-        <div className="row g-4">
-          {/* COLUMNA IZQUIERDA: IMAGEN Y DESCRIPCIÓN */}
-          <div className="col-lg-8">
-            <div className="card border-0 shadow-sm rounded-4 overflow-hidden">
-              <img 
-                src={property.imagen_url || "/imagenes/default.jpg"} 
-                alt={property.titulo} 
-                style={{ width: "100%", height: "450px", objectFit: "cover" }}
-              />
-              <div className="card-body p-4">
-                <h2 style={{ color: "#3E5E58", fontWeight: "700" }}>{property.titulo}</h2>
-                <p className="text-muted">📍 {property.sector}, {property.ciudad}</p>
-                <hr />
-                <h5 className="fw-bold">Descripción</h5>
-                <p style={{ lineHeight: "1.8", color: "#555" }}>
-                  {property.descripcion || "Sin descripción disponible."}
-                </p>
-              </div>
-            </div>
-          </div>
-
-          {/* COLUMNA DERECHA: PRECIO Y FICHA TÉCNICA */}
-          <div className="col-lg-4">
-            <div className="card border-0 shadow-sm rounded-4 p-4 mb-4">
-              <h3 style={{ color: "#3E5E58", fontWeight: "700" }}>
-                USD {Number(property.precio).toLocaleString()}
-              </h3>
-              <p className="text-muted small">Alquiler mensual + ${property.alicuota} alícuota</p>
-              
-              <div className="d-grid gap-2 mt-3">
-                <a 
-                  href={`https://wa.me/593999999999?text=Hola, solicito información del departamento en ${property.sector}`}
-                  target="_blank" 
-                  className="btn py-2" 
-                  style={{ background: "#25D366", color: "white", fontWeight: "600" }}
-                >
-                  Contactar por WhatsApp
-                </a>
-                <Link to="/login" className="btn py-2" style={{ background: "#3E5E58", color: "white" }}>
-                  Enviar Mensaje
-                </Link>
-              </div>
-            </div>
-
-            <div className="card border-0 shadow-sm rounded-4 p-4">
-              <h6 className="fw-bold mb-3">Características principales</h6>
-              <ul className="list-unstyled">
-                <li className="mb-2">📐 <b>{property.metros_cuadrados}</b> m² totales</li>
-                <li className="mb-2">🛏️ <b>{property.habitaciones}</b> Habitaciones</li>
-                <li className="mb-2">🚿 <b>{property.banos}</b> Baños</li>
-                <li className="mb-2">🚗 <b>{property.estacionamientos || 0}</b> Estacionamiento</li>
-                <li className="mb-2">🐾 <b>{property.pet_friendly ? "Sí" : "No"}</b> permite mascotas</li>
-              </ul>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
+      {/* VENTANA PEQUEÑA (MODAL) DE AGENDAMIENTO */}
+      <Dialog open={openModal} onClose={() => setOpenModal(false)} fullWidth maxWidth="xs">
+        <DialogTitle sx={{ fontWeight: 800, color: palette.titulos }}>Agendar Visita</DialogTitle>
+        <DialogContent>
+          <Stack spacing={3} sx={{ mt: 1 }}>
+            {!currentUser && (
+              <TextField label="Tu Nombre Completo" fullWidth value={citaForm.nombre_cliente} onChange={(e) => setCitaForm({...citaForm, nombre_cliente: e.target.value})} />
+            )}
+            <TextField type="date" label="Fecha" InputLabelProps={{ shrink: true }} fullWidth value={citaForm.fecha_cita} onChange={(e) => setCitaForm({...citaForm, fecha_cita: e.target.value})} />
+            <TextField type="time" label="Hora" InputLabelProps={{ shrink: true }} fullWidth value={citaForm.hora_cita} onChange={(e) => setCitaForm({...citaForm, hora_cita: e.target.value})} />
+          </Stack>
+        </DialogContent>
+        <DialogActions sx={{ p: 3 }}>
+          <Button onClick={() => setOpenModal(false)} sx={{ color: palette.textoSecundario }}>Cancelar</Button>
+          <Button variant="contained" onClick={confirmarCita} sx={{ bgcolor: palette.botonPrincipal }}>Confirmar Cita</Button>
+        </DialogActions>
+      </Dialog>
+    </Box>
   );
 }
