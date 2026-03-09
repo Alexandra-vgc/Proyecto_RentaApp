@@ -35,6 +35,11 @@ pool.query('SELECT NOW()', (err, res) => {
     console.error('❌ Error de conexión:', err.message);
   } else {
     console.log('✅ PostgreSQL conectado exitosamente');
+
+    // Asegurar que la tabla de solicitudes tenga la columna de correo
+    pool.query(`ALTER TABLE solicitudes_arriendo ADD COLUMN IF NOT EXISTS correo_cliente VARCHAR(255);`)
+      .then(() => console.log('✅ Columna correo_cliente disponible en solicitudes_arriendo'))
+      .catch((alterErr) => console.error('❌ Error al asegurar columna correo_cliente:', alterErr.message));
   }
 });
 
@@ -108,6 +113,23 @@ app.get('/api/admin/propiedades', async (req, res) => {
     res.json(result.rows);
   } catch (error) {
     res.status(500).json({ error: "Error al obtener propiedades" });
+  }
+});
+// server.js
+app.get('/api/admin/propiedades/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    // Buscamos en la tabla 'propiedades' usando la columna 'id' que vi en tu captura
+    const result = await pool.query("SELECT * FROM propiedades WHERE id = $1", [id]);
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ message: "Propiedad no encontrada" });
+    }
+    
+    res.json(result.rows[0]); 
+  } catch (error) {
+    console.error("Error al obtener detalle:", error);
+    res.status(500).json({ error: "Error interno del servidor" });
   }
 });
 

@@ -70,7 +70,7 @@ function App() {
 
       <Routes>
         <Route path="/" element={<PublicHome />} />
-        <Route path="/property/:id" element={<PropertyDetail />} />
+        <Route path="/propiedad/:id" element={<PropertyDetail />} />
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
         <Route 
