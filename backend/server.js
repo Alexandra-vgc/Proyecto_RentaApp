@@ -35,6 +35,11 @@ pool.query('SELECT NOW()', (err, res) => {
     console.error('❌ Error de conexión:', err.message);
   } else {
     console.log('✅ PostgreSQL conectado exitosamente');
+
+    // Asegurar que la tabla de solicitudes tenga la columna de correo
+    pool.query(`ALTER TABLE solicitudes_arriendo ADD COLUMN IF NOT EXISTS correo_cliente VARCHAR(255);`)
+      .then(() => console.log('✅ Columna correo_cliente disponible en solicitudes_arriendo'))
+      .catch((alterErr) => console.error('❌ Error al asegurar columna correo_cliente:', alterErr.message));
   }
 });
 

@@ -139,14 +139,19 @@ export default function PublicHome() {
   const enviarSolicitud = async (propiedadId) => {
     const nombre = prompt("Para contactar al propietario, ingresa tu nombre completo:");
     if (!nombre) return;
+    const correo = prompt("Ingresa tu correo electrónico (para recibir confirmación):", "");
+    if (!correo) return;
+
     try {
       await axios.post("http://localhost:5000/api/solicitudes", {
         propiedad_id: propiedadId,
-        nombre_cliente: nombre
+        nombre_cliente: nombre,
+        correo_cliente: correo
       });
-      alert("✅ Solicitud enviada con éxito.");
+      alert("✅ Solicitud enviada con éxito. Revisa tu correo para confirmación.");
     } catch (error) {
-      alert("❌ Error al enviar solicitud.");
+      console.error("Error al enviar solicitud:", error.response?.data || error.message);
+      alert("❌ Error al enviar solicitud. Revisa la consola para más detalles.");
     }
   };
 
