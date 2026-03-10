@@ -46,7 +46,7 @@ function InquilinoDashboard() {
     return (
       <div className="loading-container">
         <div className="spinner"></div>
-        <p>Cargando tu información...</p>
+        <p style={{color: '#C66A3D', fontWeight: 'bold', marginTop: '10px'}}>Cargando tu información...</p>
       </div>
     );
   }
@@ -54,189 +54,139 @@ function InquilinoDashboard() {
   const esComprador = tipoUsuario === 'comprador';
   const labelPago = esComprador ? 'Cuota Mensual' : 'Renta Mensual';
   const labelPendientes = esComprador ? 'Cuotas Pendientes' : 'Pagos Pendientes';
+  
+  const stats = dashboardData?.estadisticas || {
+      cuotasPendientes: 0,
+      totalAbonado: 0,
+      saldoPendiente: 0,
+      porcentajeProgreso: 0
+  };
+  const tieneContrato = !!dashboardData?.contrato;
 
-  const stats = dashboardData?.estadisticas || {};
+  // Obtenemos el primer nombre para los saludos
+  const primerNombre = user?.nombre?.split(' ')[0] || 'Usuario';
 
   return (
     <div className="inquilino-dashboard">
-      {/* NAVBAR */}
+      {/* NAVBAR: Ahora súper limpia, solo con el Logo y el botón de Cerrar Sesión */}
       <nav className="dashboard-nav">
         <div className="nav-brand">
-          {/* ✅ Título interactivo para volver al inicio */}
-          <h2 
-            onClick={() => navigate('/')} 
-            style={{ cursor: 'pointer' }}
-            title="Volver al inicio"
-          >
+          <h2 onClick={() => navigate('/')} style={{ cursor: 'pointer' }} title="Volver al inicio">
             🏠 MiRentaApp
           </h2>
-          <span className="user-badge">{esComprador ? 'Comprador' : 'Inquilino'}</span>
         </div>
         <div className="nav-user">
-          <span>Hola, {user?.nombre}</span>
-          <button onClick={handleLogout} className="btn-logout">
-            Cerrar Sesión
-          </button>
+          <button onClick={handleLogout} className="btn-logout">Cerrar Sesión</button>
         </div>
       </nav>
 
       {/* LAYOUT */}
       <div className="dashboard-layout">
+        
         {/* SIDEBAR */}
         <aside className="sidebar">
-          <button 
-            className={`sidebar-item ${activeTab === 'inicio' ? 'active' : ''}`}
-            onClick={() => setActiveTab('inicio')}
-          >
-            <span className="icon">📊</span>
-            Inicio
+          
+          {/* ✅ NUEVO: PERFIL DEL USUARIO EN EL SIDEBAR */}
+          <div className="sidebar-profile">
+            <div className="profile-avatar">
+              {primerNombre.charAt(0).toUpperCase()}
+            </div>
+            <h3 className="profile-name">{primerNombre}</h3>
+            <p className="profile-role">{esComprador ? 'Compradora' : 'Inquilina'}</p>
+          </div>
+
+          <button className={`sidebar-item ${activeTab === 'inicio' ? 'active' : ''}`} onClick={() => setActiveTab('inicio')}>
+            <span className="icon">📊</span> Panel Principal
           </button>
-          <button 
-            className={`sidebar-item ${activeTab === 'departamento' ? 'active' : ''}`}
-            onClick={() => setActiveTab('departamento')}
-          >
-            <span className="icon">🏢</span>
-            Mi Departamento
+          <button className={`sidebar-item ${activeTab === 'departamento' ? 'active' : ''}`} onClick={() => setActiveTab('departamento')}>
+            <span className="icon">🏢</span> Mi Propiedad
           </button>
-          <button 
-            className={`sidebar-item ${activeTab === 'contrato' ? 'active' : ''}`}
-            onClick={() => setActiveTab('contrato')}
-          >
-            <span className="icon">📄</span>
-            Mi Contrato
+          <button className={`sidebar-item ${activeTab === 'contrato' ? 'active' : ''}`} onClick={() => setActiveTab('contrato')}>
+            <span className="icon">📄</span> Gestión Contrato
           </button>
-          <button 
-            className={`sidebar-item ${activeTab === 'pagos' ? 'active' : ''}`}
-            onClick={() => setActiveTab('pagos')}
-          >
-            <span className="icon">💰</span>
-            Mis {esComprador ? 'Cuotas' : 'Pagos'}
-            {stats.cuotasPendientes > 0 && (
-              <span className="badge-count">{stats.cuotasPendientes}</span>
-            )}
+          <button className={`sidebar-item ${activeTab === 'pagos' ? 'active' : ''}`} onClick={() => setActiveTab('pagos')}>
+            <span className="icon">💳</span> Historial de Pagos
+            {stats.cuotasPendientes > 0 && <span className="badge-count" style={{marginLeft: 'auto', background: '#C66A3D', color: '#fff', padding: '2px 8px', borderRadius: '12px', fontSize: '0.8rem'}}>{stats.cuotasPendientes}</span>}
           </button>
-          <button 
-            className={`sidebar-item ${activeTab === 'perfil' ? 'active' : ''}`}
-            onClick={() => setActiveTab('perfil')}
-          >
-            <span className="icon">👤</span>
-            Mi Perfil
+          <button className={`sidebar-item ${activeTab === 'perfil' ? 'active' : ''}`} onClick={() => setActiveTab('perfil')}>
+            <span className="icon">⚙️</span> Configuración
           </button>
         </aside>
 
         {/* MAIN CONTENT */}
         <main className="dashboard-content">
           {activeTab === 'inicio' && (
-            <>
-              <h1 className="page-title">Mi Dashboard</h1>
+            <div className="inicio-tab-animado">
               
-              {/* ESTADÍSTICAS */}
-              <div className="stats-grid">
-                <div className="stat-card">
-                  <div className="stat-icon">🏢</div>
-                  <div className="stat-info">
-                    <h3>Mi Departamento</h3>
-                    <p className="stat-number">
-                      {dashboardData?.contrato?.codigo || 'Sin asignar'}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="stat-card">
-                  <div className="stat-icon">💵</div>
-                  <div className="stat-info">
-                    <h3>{labelPago}</h3>
-                    <p className="stat-number">
-                      ${dashboardData?.contrato?.monto_mensual || '0.00'}
-                    </p>
-                  </div>
-                </div>
-
-                {esComprador && (
-                  <>
-                    <div className="stat-card">
-                      <div className="stat-icon">💰</div>
-                      <div className="stat-info">
-                        <h3>Total Abonado</h3>
-                        <p className="stat-number">
-                          ${stats.totalAbonado?.toFixed(2) || '0.00'}
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="stat-card">
-                      <div className="stat-icon">📊</div>
-                      <div className="stat-info">
-                        <h3>Saldo Pendiente</h3>
-                        <p className="stat-number">
-                          ${stats.saldoPendiente?.toFixed(2) || '0.00'}
-                        </p>
-                      </div>
-                    </div>
-                  </>
-                )}
-
-                <div className="stat-card">
-                  <div className="stat-icon">⏰</div>
-                  <div className="stat-info">
-                    <h3>{labelPendientes}</h3>
-                    <p className="stat-number">{stats.cuotasPendientes || 0}</p>
-                  </div>
-                </div>
-
-                <div className="stat-card">
-                  <div className="stat-icon">📈</div>
-                  <div className="stat-info">
-                    <h3>Progreso</h3>
-                    <p className="stat-number">
-                      {esComprador ? `${stats.porcentajeProgreso}%` : 'Activo'}
-                    </p>
-                  </div>
-                </div>
+              {/* ✅ BANNER CORREGIDO CON BIENVENIDA PERSONALIZADA */}
+              <div className="welcome-banner">
+                <h1>¡Bienvenida, {primerNombre}! 👋</h1>
+                <p>Aquí tienes la visión general de tu estado y propiedades asignadas.</p>
               </div>
 
-              {/* BARRA DE PROGRESO SOLO PARA COMPRADORES */}
-              {esComprador && (
-                <div className="info-section">
-                  <h2>Progreso de la Compra</h2>
-                  <div className="progress-container" style={{ background: '#e0e0e0', borderRadius: '10px', height: '20px', width: '100%', marginTop: '10px' }}>
-                    <div className="progress-bar" style={{ 
-                      width: `${stats.porcentajeProgreso}%`, 
-                      background: 'linear-gradient(90deg, #667eea 0%, #764ba2 100%)',
-                      height: '100%',
-                      borderRadius: '10px',
-                      transition: 'width 0.5s ease-in-out'
-                    }}></div>
-                  </div>
-                  <p style={{ textAlign: 'right', fontSize: '0.9rem', marginTop: '5px' }}>
-                    {stats.porcentajeProgreso}% pagado de ${stats.precioTotal}
-                  </p>
+              {!tieneContrato ? (
+                /* ESTADO VACÍO */
+                <div className="empty-state-container" style={{textAlign: 'center', padding: '50px', backgroundColor: '#F5EFE6', borderRadius: '12px', border: '1px dashed #BFA58A'}}>
+                  <div className="empty-state-icon" style={{fontSize: '4rem', marginBottom: '20px'}}>🏡</div>
+                  <h2 style={{color: '#4A3F35'}}>Aún no tienes un inmueble asignado</h2>
+                  <p style={{color: '#BFA58A', marginBottom: '30px'}}>Comunícate con la administración o explora el catálogo para aplicar a una propiedad.</p>
+                  <button className="btn-explorar" onClick={() => navigate('/')}>Ver Catálogo</button>
                 </div>
-              )}
+              ) : (
+                /* ESTADÍSTICAS ESTILO DASHBOARD PROFESIONAL */
+                <>
+                  <div className="stats-grid">
+                    <div className="stat-card modern-card">
+                      <div className="stat-icon-wrapper">🏢</div>
+                      <div className="stat-info">
+                        <span className="stat-label">Inmueble Actual</span>
+                        <h4 className="stat-value">{dashboardData?.contrato?.codigo || '---'}</h4>
+                      </div>
+                    </div>
 
-              {/* ÚLTIMO PAGO */}
-              {dashboardData?.proximoPago && (
-                <div className="info-section">
-                  <h2 style={{ color: '#e74c3c' }}>⚠️ Próxima Cuota Pendiente</h2>
-                  <div className="info-card" style={{ borderLeft: '5px solid #e74c3c' }}>
-                    <div className="info-row">
-                      <span className="label">Mes correspondiente:</span>
-                      <span className="value">{dashboardData.proximoPago.mes}</span>
+                    <div className="stat-card modern-card">
+                      <div className="stat-icon-wrapper">💵</div>
+                      <div className="stat-info">
+                        <span className="stat-label">{labelPago}</span>
+                        <h4 className="stat-value">${dashboardData?.contrato?.monto_mensual || '0.00'}</h4>
+                      </div>
                     </div>
-                    <div className="info-row">
-                      <span className="label">Monto a pagar:</span>
-                      <span className="value price">${dashboardData.proximoPago.monto}</span>
-                    </div>
-                    <div className="info-row">
-                      <span className="label">Fecha límite:</span>
-                      <span className="value">
-                        {new Date(dashboardData.proximoPago.fecha_vencimiento).toLocaleDateString()}
-                      </span>
+
+                    <div className="stat-card modern-card">
+                      <div className="stat-icon-wrapper">⏰</div>
+                      <div className="stat-info">
+                        <span className="stat-label">{labelPendientes}</span>
+                        <h4 className="stat-value">{stats.cuotasPendientes || 0}</h4>
+                      </div>
                     </div>
                   </div>
-                </div>
+
+                  {esComprador && (
+                    <div className="progress-section">
+                      <h3>Gráfico de Progreso de Compra</h3>
+                      <div className="progress-bar-bg">
+                        <div className="progress-bar-fill" style={{ width: `${stats.porcentajeProgreso}%` }}></div>
+                      </div>
+                      <div className="progress-details">
+                        <span>Capital Abonado: <strong>${stats.totalAbonado?.toFixed(2)}</strong></span>
+                        <span>Saldo Restante: <strong>${stats.saldoPendiente?.toFixed(2)}</strong></span>
+                        <span style={{color: '#C66A3D', fontWeight: 'bold'}}>{stats.porcentajeProgreso}% Completado</span>
+                      </div>
+                    </div>
+                  )}
+
+                  {dashboardData?.proximoPago && (
+                    <div className="alert-section">
+                      <div className="alert-content">
+                        <h3 style={{margin: '0 0 5px 0', color: '#D9534F'}}>⚠️ Próximo Vencimiento</h3>
+                        <p style={{margin: 0, color: '#4A3F35'}}>Tienes una cuota de <strong>${dashboardData.proximoPago.monto}</strong> correspondiente a <strong>{dashboardData.proximoPago.mes}</strong>.</p>
+                      </div>
+                      <button className="btn-pay-now" onClick={() => setShowRegistrarPago(true)}>Pagar Ahora</button>
+                    </div>
+                  )}
+                </>
               )}
-            </>
+            </div>
           )}
 
           {activeTab === 'departamento' && <MiDepartamento />}
@@ -245,23 +195,15 @@ function InquilinoDashboard() {
           {activeTab === 'perfil' && <MiPerfil />}
         </main>
       </div>
-
-      <button 
-        className="btn-fab"
-        onClick={() => setShowRegistrarPago(true)}
-        title={`Registrar ${esComprador ? 'Cuota' : 'Pago'}`}
-      >
-        💰
-      </button>
+      {/* Solo mostramos el botón flotante si el usuario TIENE un contrato asignado */}
+      {tieneContrato && (
+        <button className="btn-fab" onClick={() => setShowRegistrarPago(true)} title={`Registrar ${esComprador ? 'Cuota' : 'Pago'}`}>
+          💰
+        </button>
+      )}
 
       {showRegistrarPago && (
-        <RegistrarPago 
-          onClose={() => setShowRegistrarPago(false)}
-          onPagoRegistrado={() => {
-            cargarDashboard();
-            setShowRegistrarPago(false);
-          }}
-        />
+        <RegistrarPago onClose={() => setShowRegistrarPago(false)} onPagoRegistrado={() => { cargarDashboard(); setShowRegistrarPago(false); }} />
       )}
     </div>
   );

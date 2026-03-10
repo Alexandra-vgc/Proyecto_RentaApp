@@ -12,6 +12,9 @@ function Register() {
     confirmPassword: '',
     rol: 'inquilino'
   });
+  
+  // ✅ NUEVO: Estado para saber si aceptó los términos
+  const [aceptaTerminos, setAceptaTerminos] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -23,9 +26,7 @@ function Register() {
     setError('');
   };
 
-  // ✅ Función de seguridad: Validar contraseña fuerte
   const validarPassword = (password) => {
-    // Mínimo 8 caracteres, al menos 1 letra, 1 número y 1 carácter especial
     const regex = /^(?=.*[A-Za-z])(?=.*\d)(?=.*[@$!%*#?&.])[A-Za-z\d@$!%*#?&.]{8,}$/;
     return regex.test(password);
   };
@@ -35,16 +36,21 @@ function Register() {
     setLoading(true);
     setError('');
 
-    // 1. Validar coincidencia
     if (formData.password !== formData.confirmPassword) {
       setError('Las contraseñas no coinciden');
       setLoading(false);
       return;
     }
 
-    // 2. Validar seguridad
     if (!validarPassword(formData.password)) {
       setError('La contraseña debe tener mínimo 8 caracteres, incluir letras, números y un carácter especial (@$!%*#?&.)');
+      setLoading(false);
+      return;
+    }
+
+    // ✅ NUEVO: Validación extra por seguridad
+    if (!aceptaTerminos) {
+      setError('Debes aceptar los Términos y Condiciones para registrarte.');
       setLoading(false);
       return;
     }
@@ -57,7 +63,6 @@ function Register() {
         formData.rol
       );
       alert('✅ Registro exitoso!');
-      // Te lleva al login para que inicies sesión y de ahí te redirija al dashboard correcto
       navigate('/login');
     } catch (err) {
       setError(err.message || 'Error al registrar usuario');
@@ -164,15 +169,33 @@ function Register() {
                 }}
               >
                 <option value="inquilino">Inquilino</option>
-                <option value="comprador">Comprador</option> {/* ✅ NUEVO ROL */}
+                <option value="comprador">Comprador</option>
                 <option value="propietario">Propietario</option>
               </select>
+            </div>
+
+            {/* ✅ NUEVO: Casilla de Términos y Condiciones */}
+            <div className="form-group" style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '10px', marginBottom: '20px' }}>
+              <input 
+                type="checkbox" 
+                id="terminos" 
+                checked={aceptaTerminos}
+                onChange={(e) => setAceptaTerminos(e.target.checked)}
+                style={{ width: '18px', height: '18px', cursor: 'pointer' }}
+                required
+              />
+              <label htmlFor="terminos" style={{ fontSize: '0.9rem', color: '#555', cursor: 'pointer', margin: 0 }}>
+                He leído y acepto los{' '}
+                <Link to="/terminos" target="_blank" style={{ color: '#764ba2', textDecoration: 'underline' }}>
+                  Términos y Condiciones
+                </Link>
+              </label>
             </div>
 
             <button 
               type="submit" 
               className="btn-login"
-              disabled={loading}
+              disabled={loading || !aceptaTerminos} /* El botón se bloquea si no acepta */
             >
               {loading ? 'Registrando...' : 'Crear Cuenta'}
             </button>

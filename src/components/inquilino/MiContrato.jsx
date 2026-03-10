@@ -1,11 +1,10 @@
 import { useState, useEffect } from 'react';
-import authService from '../../services/authService';
 import axios from 'axios';
+import authService from '../../services/authService';
 
 function MiContrato() {
   const [contrato, setContrato] = useState(null);
   const [loading, setLoading] = useState(true);
-  const tipoUsuario = authService.getTipoUsuario();
 
   useEffect(() => {
     cargarContrato();
@@ -14,116 +13,126 @@ function MiContrato() {
   const cargarContrato = async () => {
     try {
       const token = authService.getToken();
-      const apiBase = authService.getApiBase();
-      const response = await axios.get(`${apiBase}/mi-contrato`, {
+      const tipoUsuario = authService.getTipoUsuario();
+      const apiBase = tipoUsuario === 'comprador' ? '/api/comprador' : '/api/inquilino';
+
+      const response = await axios.get(`http://localhost:5000${apiBase}/mi-contrato`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setContrato(response.data);
-      setLoading(false);
     } catch (error) {
-      console.error('Error:', error);
+      console.error('Error al cargar el contrato', error);
+      setContrato(null);
+    } finally {
       setLoading(false);
     }
   };
 
-  if (loading) {
-    return <div className="loading-container"><div className="spinner"></div></div>;
-  }
+  const handleDescargarPDF = () => {
+    // 🚀 Esto lo conectaremos más adelante cuando el backend de los PDFs esté listo
+    alert("¡Próximamente! El documento PDF de tu contrato estará disponible para descarga muy pronto.");
+  };
 
-  if (!contrato) {
+  if (loading) {
     return (
-      <div className="no-data">
-        <h2>No tienes un contrato activo</h2>
-        <p>Contacta al administrador para más información.</p>
+      <div style={{ textAlign: 'center', padding: '80px 0', color: 'var(--color-primario)' }}>
+        <div className="spinner"></div>
+        <p style={{ marginTop: '16px', fontWeight: 'bold' }}>Cargando documento legal...</p>
       </div>
     );
   }
 
-  const esComprador = tipoUsuario === 'comprador';
-  const tituloContrato = esComprador ? 'Contrato de Compra' : 'Contrato de Arrendamiento';
+  // ✅ PANTALLA VACÍA: Diseño elegante si aún no hay contrato
+  if (!contrato) {
+    return (
+      <div className="empty-state-container" style={{ textAlign: 'center', padding: '80px 20px', background: 'var(--fondo-tarjeta)', borderRadius: '16px', border: '1px dashed var(--texto-secundario)' }}>
+        <div style={{ fontSize: '4.5rem', marginBottom: '20px' }}>📄</div>
+        <h2 style={{ color: 'var(--texto-oscuro)', marginBottom: '15px' }}>Sin contrato vigente</h2>
+        <p style={{ color: 'var(--texto-secundario)', maxWidth: '550px', margin: '0 auto', fontSize: '1.1rem', lineHeight: '1.6' }}>
+          Aún no se ha generado ni firmado un contrato para tu cuenta. Una vez que la administración lo apruebe, aparecerá aquí tu documento oficial.
+        </p>
+      </div>
+    );
+  }
+
+  // ✅ PANTALLA CON DATOS: La tarjeta del contrato
+  const esComprador = authService.getTipoUsuario() === 'comprador';
 
   return (
-    <div>
-      <h1 className="page-title">{tituloContrato}</h1>
-      
-      <div className="info-card">
-        <div className="info-row">
-          <span className="label">Departamento:</span>
-          <span className="value"><strong>{contrato.departamento_codigo}</strong></span>
-        </div>
-        <div className="info-row">
-          <span className="label">Dirección:</span>
-          <span className="value">{contrato.departamento_direccion}</span>
-        </div>
-        <div className="info-row">
-          <span className="label">Habitaciones:</span>
-          <span className="value">{contrato.numero_habitaciones}</span>
-        </div>
-        <div className="info-row">
-          <span className="label">Baños:</span>
-          <span className="value">{contrato.numero_banos}</span>
-        </div>
-        <div className="info-row">
-          <span className="label">Metros Cuadrados:</span>
-          <span className="value">{contrato.metros_cuadrados} m²</span>
-        </div>
-        <div className="info-row">
-          <span className="label">Fecha Inicio:</span>
-          <span className="value">{new Date(contrato.fecha_inicio).toLocaleDateString()}</span>
-        </div>
-        <div className="info-row">
-          <span className="label">Fecha Fin:</span>
-          <span className="value">{new Date(contrato.fecha_fin).toLocaleDateString()}</span>
-        </div>
+    <div style={{ maxWidth: '900px', margin: '0 auto' }}>
+      <h2 style={{ color: 'var(--texto-oscuro)', marginBottom: '25px', fontSize: '24px', borderBottom: '2px solid var(--lineas-bordes)', paddingBottom: '10px' }}>
+        Gestión de Contrato
+      </h2>
+
+      <div className="modern-card" style={{ padding: '40px', position: 'relative', overflow: 'hidden' }}>
         
-        {esComprador ? (
-          <>
-            <div className="info-row">
-              <span className="label">Precio Total:</span>
-              <span className="value price">${contrato.precio_total}</span>
-            </div>
-            <div className="info-row">
-              <span className="label">Cuota Inicial:</span>
-              <span className="value price">${contrato.cuota_inicial}</span>
-            </div>
-            <div className="info-row">
-              <span className="label">Número de Cuotas:</span>
-              <span className="value">{contrato.numero_cuotas}</span>
-            </div>
-            <div className="info-row">
-              <span className="label">Cuota Mensual:</span>
-              <span className="value price">${contrato.monto_mensual}</span>
-            </div>
-          </>
-        ) : (
-          <>
-            <div className="info-row">
-              <span className="label">Renta Mensual:</span>
-              <span className="value price">${contrato.monto_mensual}</span>
-            </div>
-            <div className="info-row">
-              <span className="label">Día de Pago:</span>
-              <span className="value">{contrato.dia_pago}</span>
-            </div>
-            <div className="info-row">
-              <span className="label">Depósito:</span>
-              <span className="value price">${contrato.deposito}</span>
-            </div>
-          </>
-        )}
-        
-        <div className="info-row">
-          <span className="label">Estado:</span>
-          <span className={`status-badge ${contrato.estado}`}>
-            {contrato.estado}
-          </span>
+        {/* Etiqueta de estado en la esquina */}
+        <div style={{ position: 'absolute', top: '30px', right: '-35px', background: '#2e7d32', color: 'white', padding: '8px 40px', transform: 'rotate(45deg)', fontWeight: 'bold', fontSize: '12px', letterSpacing: '1px', boxShadow: '0 2px 5px rgba(0,0,0,0.2)' }}>
+          ACTIVO
         </div>
-        {contrato.notas && (
-          <div className="info-row">
-            <span className="label">Notas:</span>
-            <span className="value">{contrato.notas}</span>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: '20px', marginBottom: '35px', borderBottom: '1px solid var(--lineas-bordes)', paddingBottom: '25px' }}>
+          <div style={{ background: 'var(--fondo-principal)', padding: '20px', borderRadius: '12px', color: 'var(--color-primario)', fontSize: '40px' }}>
+            {esComprador ? '📜' : '📝'}
           </div>
-        )}
+          <div>
+            <h3 style={{ margin: '0 0 8px 0', color: 'var(--texto-oscuro)', fontSize: '22px' }}>
+              {esComprador ? 'Contrato de Compraventa' : 'Contrato de Arrendamiento'}
+            </h3>
+            <p style={{ margin: 0, color: 'var(--texto-secundario)', fontWeight: 'bold', letterSpacing: '1px' }}>
+              CÓDIGO: {contrato.id ? `CTR-2026-${contrato.id.toString().padStart(4, '0')}` : '---'}
+            </p>
+          </div>
+        </div>
+
+        {/* Cuadrícula de Datos */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '25px', marginBottom: '40px' }}>
+          
+          <div style={{ background: 'var(--fondo-principal)', padding: '20px', borderRadius: '12px', borderLeft: '4px solid var(--color-primario)' }}>
+            <p style={{ margin: '0 0 5px 0', color: 'var(--texto-secundario)', fontSize: '12px', fontWeight: 'bold', textTransform: 'uppercase' }}>Inmueble Asociado</p>
+            <p style={{ margin: 0, color: 'var(--texto-oscuro)', fontSize: '18px', fontWeight: 'bold' }}>{contrato.departamento_codigo || '---'}</p>
+          </div>
+
+          <div style={{ background: 'var(--fondo-principal)', padding: '20px', borderRadius: '12px', borderLeft: '4px solid var(--color-primario)' }}>
+            <p style={{ margin: '0 0 5px 0', color: 'var(--texto-secundario)', fontSize: '12px', fontWeight: 'bold', textTransform: 'uppercase' }}>Fecha de Inicio</p>
+            <p style={{ margin: 0, color: 'var(--texto-oscuro)', fontSize: '18px', fontWeight: 'bold' }}>
+              {contrato.fecha_inicio ? new Date(contrato.fecha_inicio).toLocaleDateString() : '---'}
+            </p>
+          </div>
+
+          <div style={{ background: 'var(--fondo-principal)', padding: '20px', borderRadius: '12px', borderLeft: '4px solid var(--color-primario)' }}>
+            <p style={{ margin: '0 0 5px 0', color: 'var(--texto-secundario)', fontSize: '12px', fontWeight: 'bold', textTransform: 'uppercase' }}>Término del Contrato</p>
+            <p style={{ margin: 0, color: 'var(--texto-oscuro)', fontSize: '18px', fontWeight: 'bold' }}>
+              {contrato.fecha_fin ? new Date(contrato.fecha_fin).toLocaleDateString() : 'Indefinido'}
+            </p>
+          </div>
+
+        </div>
+
+        {/* Sección de Descarga */}
+        <div style={{ background: '#f8f9fa', padding: '30px', borderRadius: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', border: '1px solid #e9ecef' }}>
+          <div>
+            <h4 style={{ margin: '0 0 8px 0', color: '#2c3e50', fontSize: '18px' }}>Documento Digital (PDF)</h4>
+            <p style={{ margin: 0, color: '#6c757d', fontSize: '14px', maxWidth: '400px' }}>
+              Descarga una copia firmada digitalmente de tu contrato para tus registros personales.
+            </p>
+          </div>
+          <button 
+            onClick={handleDescargarPDF}
+            style={{ 
+              background: 'linear-gradient(135deg, var(--color-primario) 0%, #a05330 100%)', 
+              color: 'white', border: 'none', padding: '14px 28px', borderRadius: '8px', 
+              fontWeight: 'bold', fontSize: '15px', cursor: 'pointer', 
+              boxShadow: '0 4px 15px rgba(198, 106, 61, 0.4)', transition: 'transform 0.2s',
+              display: 'flex', alignItems: 'center', gap: '10px'
+            }}
+            onMouseEnter={e => e.currentTarget.style.transform = 'translateY(-2px)'}
+            onMouseLeave={e => e.currentTarget.style.transform = 'translateY(0)'}
+          >
+            <span>📄</span> Descargar Contrato
+          </button>
+        </div>
+
       </div>
     </div>
   );

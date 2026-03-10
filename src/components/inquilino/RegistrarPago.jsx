@@ -1,208 +1,123 @@
-import { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import axios from 'axios';
-import './RegistrarPago.css';
+import authService from '../../services/authService';
 
 function RegistrarPago({ onClose, onPagoRegistrado }) {
-  const [contratos, setContratos] = useState([]);
   const [formData, setFormData] = useState({
-    contrato_id: '',
-    mes: '',
     monto: '',
-    fecha_pago: '',
-    fecha_vencimiento: '',
-    metodo_pago: 'transferencia',
-    notas: ''
+    mes: '',
+    metodo: 'transferencia',
+    comprobante_url: '' // Aquí guardaremos la imagen convertida
   });
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
+  const tipoUsuario = authService.getTipoUsuario();
 
-  useEffect(() => {
-    cargarContratos();
-  }, []);
-
-  const cargarContratos = async () => {
-    try {
-      const token = localStorage.getItem('token');
-      const response = await axios.get('http://localhost:5000/api/user/contratos', {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      // Solo contratos activos
-      const activos = response.data.filter(c => c.estado === 'activo');
-      setContratos(activos);
-    } catch (error) {
-      console.error('Error al cargar contratos:', error);
+  // Función para convertir la imagen a texto (Base64) para guardarla fácil
+  const handleImageUpload = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setFormData({ ...formData, comprobante_url: reader.result });
+      };
+      reader.readAsDataURL(file);
     }
-  };
-
-  const handleContratoChange = (e) => {
-    const contratoId = e.target.value;
-    const contrato = contratos.find(c => c.id === parseInt(contratoId));
-    
-    if (contrato) {
-      // Autocompletar el monto con el del contrato
-      setFormData({
-        ...formData,
-        contrato_id: contratoId,
-        monto: contrato.monto_mensual
-      });
-    } else {
-      setFormData({ ...formData, contrato_id: contratoId });
-    }
-  };
-
-  const handleChange = (e) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value
-    });
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
-    setError('');
-
-    // Validaciones
-    if (!formData.contrato_id) {
-      setError('Debes seleccionar un contrato');
-      setLoading(false);
-      return;
-    }
 
     try {
-      const token = localStorage.getItem('token');
-      await axios.post(
-        'http://localhost:5000/api/user/pagos',
-        formData,
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-
-      alert('✅ Pago registrado exitosamente');
-      onPagoRegistrado();
-      onClose();
-    } catch (err) {
-      setError(err.response?.data?.message || 'Error al registrar pago');
-    } finally {
+      const token = authService.getToken();
+      const apiBase = tipoUsuario === 'comprador' ? '/api/comprador' : '/api/inquilino';
+      
+      await axios.post(`http://localhost:5000${apiBase}/pagos`, formData, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
+      alert('✅ Pago enviado para revisión exitosamente.');
+      onPagoRegistrado(); // Cierra la ventana y recarga el dashboard
+    } catch (error) {
+      console.error('Error al registrar pago:', error);
+      alert('Hubo un error al enviar el pago. Inténtalo de nuevo.');
       setLoading(false);
     }
   };
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-        <div className="modal-header">
-          <h2>💰 Registrar Pago</h2>
-          <button className="btn-close" onClick={onClose}>✕</button>
+    <div style={{
+      position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh',
+      backgroundColor: 'rgba(74, 63, 53, 0.7)', // Fondo oscuro elegante
+      display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000
+    }}>
+      <div style={{
+        backgroundColor: 'var(--fondo-tarjeta)', padding: '40px', borderRadius: '16px',
+        width: '100%', maxWidth: '500px', boxShadow: '0 10px 30px rgba(0,0,0,0.2)',
+        border: '2px solid var(--color-primario)'
+      }}>
+        
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '25px' }}>
+          <h2 style={{ margin: 0, color: 'var(--texto-oscuro)' }}>Registrar Nuevo Pago</h2>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', fontSize: '1.5rem', cursor: 'pointer', color: 'var(--texto-secundario)' }}>✖</button>
         </div>
 
-        <form onSubmit={handleSubmit} className="pago-form">
-          {error && (
-            <div className="error-message">
-              <span>⚠️ {error}</span>
-            </div>
-          )}
+        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          
+          <div>
+            <label style={{ display: 'block', color: 'var(--texto-oscuro)', fontWeight: 'bold', marginBottom: '8px' }}>Monto a Pagar ($)</label>
+            <input 
+              type="number" 
+              required 
+              min="1"
+              step="0.01"
+              value={formData.monto}
+              onChange={(e) => setFormData({...formData, monto: e.target.value})}
+              style={{ width: '100%', padding: '12px', borderRadius: '8px', border: '1px solid var(--lineas-bordes)', fontSize: '1rem', backgroundColor: '#fff' }}
+              placeholder="Ej: 450.00"
+            />
+          </div>
 
-          <div className="form-group">
-            <label>Contrato *</label>
-            <select
-              name="contrato_id"
-              value={formData.contrato_id}
-              onChange={handleContratoChange}
+          <div>
+            <label style={{ display: 'block', color: 'var(--texto-oscuro)', fontWeight: 'bold', marginBottom: '8px' }}>Mes Correspondiente</label>
+            <select 
               required
+              value={formData.mes}
+              onChange={(e) => setFormData({...formData, mes: e.target.value})}
+              style={{ width: '100%', padding: '12px', borderRadius: '8px', border: '1px solid var(--lineas-bordes)', fontSize: '1rem', backgroundColor: '#fff', cursor: 'pointer' }}
             >
-              <option value="">Selecciona un contrato</option>
-              {contratos.map((contrato) => (
-                <option key={contrato.id} value={contrato.id}>
-                  {contrato.departamento_codigo} - {contrato.inquilino_nombre} {contrato.inquilino_apellido}
-                </option>
-              ))}
+              <option value="">Selecciona un mes...</option>
+              <option value="Enero 2026">Enero 2026</option>
+              <option value="Febrero 2026">Febrero 2026</option>
+              <option value="Marzo 2026">Marzo 2026</option>
+              <option value="Abril 2026">Abril 2026</option>
+              <option value="Mayo 2026">Mayo 2026</option>
             </select>
           </div>
 
-          <div className="form-row">
-            <div className="form-group">
-              <label>Mes (YYYY-MM) *</label>
-              <input
-                type="month"
-                name="mes"
-                value={formData.mes}
-                onChange={handleChange}
-                required
-              />
-            </div>
-
-            <div className="form-group">
-              <label>Monto *</label>
-              <input
-                type="number"
-                step="0.01"
-                name="monto"
-                value={formData.monto}
-                onChange={handleChange}
-                placeholder="0.00"
-                required
-              />
-            </div>
+          <div>
+            <label style={{ display: 'block', color: 'var(--texto-oscuro)', fontWeight: 'bold', marginBottom: '8px' }}>Comprobante (Transferencia o Depósito)</label>
+            <input 
+              type="file" 
+              accept="image/*"
+              onChange={handleImageUpload}
+              required
+              style={{ width: '100%', padding: '10px', backgroundColor: 'var(--fondo-principal)', borderRadius: '8px', border: '1px dashed var(--color-primario)', color: 'var(--texto-oscuro)' }}
+            />
+            {formData.comprobante_url && (
+              <p style={{ margin: '10px 0 0 0', fontSize: '0.85rem', color: '#2e7d32', fontWeight: 'bold' }}>✓ Imagen cargada lista para enviar</p>
+            )}
           </div>
 
-          <div className="form-row">
-            <div className="form-group">
-              <label>Fecha de Pago</label>
-              <input
-                type="date"
-                name="fecha_pago"
-                value={formData.fecha_pago}
-                onChange={handleChange}
-              />
-              <small>Deja vacío si aún no se ha pagado</small>
-            </div>
-
-            <div className="form-group">
-              <label>Fecha Vencimiento *</label>
-              <input
-                type="date"
-                name="fecha_vencimiento"
-                value={formData.fecha_vencimiento}
-                onChange={handleChange}
-                required
-              />
-            </div>
-          </div>
-
-          <div className="form-group">
-            <label>Método de Pago</label>
-            <select
-              name="metodo_pago"
-              value={formData.metodo_pago}
-              onChange={handleChange}
-            >
-              <option value="transferencia">Transferencia</option>
-              <option value="efectivo">Efectivo</option>
-              <option value="tarjeta">Tarjeta</option>
-              <option value="cheque">Cheque</option>
-              <option value="otro">Otro</option>
-            </select>
-          </div>
-
-          <div className="form-group">
-            <label>Notas</label>
-            <textarea
-              name="notas"
-              value={formData.notas}
-              onChange={handleChange}
-              rows="3"
-              placeholder="Observaciones adicionales..."
-            ></textarea>
-          </div>
-
-          <div className="form-actions">
-            <button type="button" className="btn-cancel" onClick={onClose}>
+          <div style={{ display: 'flex', gap: '15px', marginTop: '10px' }}>
+            <button type="button" onClick={onClose} style={{ flex: 1, padding: '12px', backgroundColor: 'transparent', border: '2px solid var(--texto-secundario)', color: 'var(--texto-secundario)', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer' }}>
               Cancelar
             </button>
-            <button type="submit" className="btn-submit" disabled={loading}>
-              {loading ? 'Registrando...' : 'Registrar Pago'}
+            <button type="submit" disabled={loading} style={{ flex: 2, padding: '12px', backgroundColor: 'var(--color-primario)', border: 'none', color: 'white', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', transition: 'opacity 0.3s' }}>
+              {loading ? 'Enviando...' : 'Enviar Pago a Revisión'}
             </button>
           </div>
+
         </form>
       </div>
     </div>
