@@ -1,9 +1,10 @@
 import { BrowserRouter as Router, Routes, Route, Navigate, Link } from 'react-router-dom';
-import { useState, useEffect } from "react"; // ✅ Importamos useEffect
+import { useState, useEffect } from "react"; 
 
 import WelcomeModal from "./components/WelcomeModal";
 import Login from './components/login';
 import Register from './components/Register';
+import Terminos from './pages/Terminos';
 import InquilinoDashboard from './components/inquilino/InquilinoDashboard'; 
 import AdminDashboard from './components/admin/AdminDashboard'; 
 import PublicHome from "./pages/PublicHome";
@@ -14,27 +15,21 @@ import authService from './services/authService';
 function App() {
   const [showWelcome, setShowWelcome] = useState(false);
   
-  // ✅ NUEVO: Creamos un estado para saber si el usuario está autenticado
   const [isAuth, setIsAuth] = useState(authService.isAuthenticated());
 
-  // ✅ NUEVO: Usamos useEffect para escuchar el "timbre"
   useEffect(() => {
-    // Esta función se ejecuta cuando suena el timbre
     const handleAuthChange = () => {
-      setIsAuth(authService.isAuthenticated()); // Actualizamos el estado
+      setIsAuth(authService.isAuthenticated()); 
     };
 
-    // Ponemos la "oreja" para escuchar el evento
     window.addEventListener('authStateChange', handleAuthChange);
 
-    // Limpiamos la "oreja" si el componente se destruye (buena práctica)
     return () => {
       window.removeEventListener('authStateChange', handleAuthChange);
     };
   }, []);
 
-
-  // 🛡️ Guardias de Seguridad (Sin cambios)
+  // 🛡️ Guardias de Seguridad
   const ClienteRoute = ({ children }) => {
     const user = authService.getCurrentUser();
     if (!user) return <Navigate to="/login" />;
@@ -51,7 +46,6 @@ function App() {
 
   return (
     <Router>
-      {/* ✅ CAMBIO CLAVE: Usamos el estado 'isAuth' que ahora sí se actualiza */}
       {!isAuth && (
         <div style={{ borderBottom: "1px solid #ddd", padding: "10px 20px", display: "flex", justifyContent: "space-between", backgroundColor: "#fff" }}>
           <Link to="/" style={{ textDecoration: "none", color: "inherit", fontSize: "1.2rem" }}>
@@ -73,6 +67,10 @@ function App() {
         <Route path="/propiedad/:id" element={<PropertyDetail />} />
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
+        
+        {/* ✅ NUEVO: Le decimos al guardia que esta ruta sí existe y es pública */}
+        <Route path="/terminos" element={<Terminos />} />
+
         <Route 
           path="/dashboard" 
           element={
@@ -89,6 +87,7 @@ function App() {
             </AdminRoute>
           } 
         />
+        {/* Este es el guardia que rebotaba a los usuarios si la ruta no existía */}
         <Route path="*" element={<Navigate to="/" />} />
       </Routes>
     </Router>
