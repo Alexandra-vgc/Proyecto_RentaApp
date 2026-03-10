@@ -19,15 +19,23 @@ function MiPerfil() {
   const cargarPerfil = async () => {
     try {
       const token = authService.getToken();
-      // Intentar obtener datos del inquilino desde el backend
-      const response = await axios.get('http://localhost:5000/api/inquilino/mi-perfil', {
+      const tipoUsuario = authService.getTipoUsuario();
+      const apiBase = tipoUsuario === 'comprador' ? '/api/comprador' : '/api/inquilino';
+      
+      const response = await axios.get(`http://localhost:5000${apiBase}/mi-perfil`, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      setPerfil(response.data);
-      setFormData(response.data);
+      
+      // ✅ CORRECCIÓN CLAVE: Si el backend envía "null", forzamos el uso de datos locales
+      if (response.data) {
+        setPerfil(response.data);
+        setFormData(response.data);
+      } else {
+        throw new Error("El perfil aún está vacío en la base de datos");
+      }
+      
     } catch (err) {
-      // Si la ruta no existe aún, usar datos del usuario local
-      console.warn('Ruta mi-perfil no disponible, usando datos locales.');
+      console.warn('Usando datos de registro básicos.');
       const datosLocales = {
         nombre: user?.nombre || '',
         apellido: '',
@@ -53,7 +61,10 @@ function MiPerfil() {
     setErrorMsg(null);
     try {
       const token = authService.getToken();
-      await axios.put('http://localhost:5000/api/inquilino/mi-perfil', formData, {
+      const tipoUsuario = authService.getTipoUsuario();
+      const apiBase = tipoUsuario === 'comprador' ? '/api/comprador' : '/api/inquilino';
+
+      await axios.put(`http://localhost:5000${apiBase}/mi-perfil`, formData, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setPerfil({ ...formData });
@@ -73,11 +84,12 @@ function MiPerfil() {
     setErrorMsg(null);
   };
 
-  if (loading) {
+  // ✅ CORRECCIÓN CLAVE 2: Validamos que perfil no sea null antes de mostrar la pantalla
+  if (loading || !perfil) {
     return (
-      <div style={{ textAlign: 'center', padding: '80px 0' }}>
+      <div style={{ textAlign: 'center', padding: '80px 0', color: 'var(--color-primario)' }}>
         <div className="spinner"></div>
-        <p style={{ color: '#6c757d', marginTop: '16px' }}>Cargando perfil...</p>
+        <p style={{ marginTop: '16px', fontWeight: 'bold' }}>Cargando información del perfil...</p>
       </div>
     );
   }
@@ -92,180 +104,90 @@ function MiPerfil() {
   ];
 
   return (
-    <div>
-      <h1 className="page-title">Mi Perfil</h1>
-
+    <div style={{ maxWidth: '900px', margin: '0 auto' }}>
+      
       {/* MENSAJE DE ÉXITO */}
       {mensajeExito && (
-        <div style={{
-          background: '#e8f5e9',
-          color: '#2e7d32',
-          border: '1px solid #a5d6a7',
-          borderRadius: '12px',
-          padding: '14px 20px',
-          marginBottom: '20px',
-          fontWeight: '600',
-          fontSize: '14px',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '10px',
-          animation: 'fadeIn 0.3s ease'
-        }}>
+        <div style={{ background: '#e8f5e9', color: '#2e7d32', border: '1px solid #a5d6a7', borderRadius: '12px', padding: '14px 20px', marginBottom: '20px', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '10px' }}>
           <span>✅</span> {mensajeExito}
         </div>
       )}
 
       {/* MENSAJE DE ERROR */}
       {errorMsg && (
-        <div style={{
-          background: '#ffebee',
-          color: '#c62828',
-          border: '1px solid #ffcdd2',
-          borderRadius: '12px',
-          padding: '14px 20px',
-          marginBottom: '20px',
-          fontWeight: '600',
-          fontSize: '14px',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '10px'
-        }}>
+        <div style={{ background: '#ffebee', color: '#c62828', border: '1px solid #ffcdd2', borderRadius: '12px', padding: '14px 20px', marginBottom: '20px', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '10px' }}>
           <span>⚠️</span> {errorMsg}
         </div>
       )}
 
-      {/* AVATAR + NOMBRE GRANDE */}
-      <div style={{
-        background: 'white',
-        borderRadius: '16px',
-        padding: '36px',
-        boxShadow: '0 2px 10px rgba(0,0,0,0.05)',
-        marginBottom: '24px',
-        textAlign: 'center'
-      }}>
+      {/* TARJETA SUPERIOR: AVATAR Y DATOS PRINCIPALES */}
+      <div className="modern-card" style={{ textAlign: 'center', marginBottom: '24px', padding: '40px' }}>
         <div style={{
-          width: '100px', height: '100px',
+          width: '120px', height: '120px',
           borderRadius: '50%',
-          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+          backgroundColor: 'var(--color-primario)',
+          color: 'var(--texto-boton)',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
-          margin: '0 auto 16px',
-          boxShadow: '0 6px 20px rgba(102, 126, 234, 0.35)',
-          fontSize: '42px'
+          margin: '0 auto 20px',
+          boxShadow: '0 8px 25px rgba(198, 106, 61, 0.4)',
+          fontSize: '3rem',
+          fontWeight: 'bold'
         }}>
-          👤
+          {perfil.nombre ? perfil.nombre.charAt(0).toUpperCase() : 'U'}
         </div>
-        <h2 style={{ margin: '0 0 6px', color: '#2c3e50', fontSize: '24px' }}>
+        
+        <h2 style={{ margin: '0 0 8px', color: 'var(--texto-oscuro)', fontSize: '26px' }}>
           {perfil.nombre} {perfil.apellido}
         </h2>
-        <p style={{ margin: '0 0 4px', color: '#6c757d', fontSize: '15px' }}>
+        
+        <p style={{ margin: '0 0 15px', color: 'var(--texto-secundario)', fontSize: '16px' }}>
           {perfil.email}
         </p>
-        <span style={{
-          display: 'inline-block',
-          padding: '5px 16px',
-          background: '#e3f2fd',
-          color: '#1976d2',
-          borderRadius: '16px',
-          fontSize: '13px',
-          fontWeight: '600'
-        }}>
-          Inquilino
+        
+        <span style={{ display: 'inline-block', padding: '6px 20px', backgroundColor: 'var(--fondo-principal)', color: 'var(--color-primario)', borderRadius: '20px', fontSize: '14px', fontWeight: 'bold', border: '1px solid var(--lineas-bordes)' }}>
+          {authService.getTipoUsuario() === 'comprador' ? 'Comprador' : 'Inquilino'}
         </span>
       </div>
 
-      {/* FORMULARIO / VISTA DE CAMPOS */}
-      <div style={{
-        background: 'white',
-        borderRadius: '16px',
-        padding: '28px 32px',
-        boxShadow: '0 2px 10px rgba(0,0,0,0.05)'
-      }}>
-        {/* BOTONES EDITAR / GUARDAR */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
-          <h3 style={{ margin: 0, color: '#2c3e50', fontSize: '18px' }}>📋 Información Personal</h3>
+      {/* TARJETA INFERIOR: FORMULARIO */}
+      <div className="modern-card" style={{ padding: '35px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '30px', borderBottom: '1px solid var(--lineas-bordes)', paddingBottom: '15px' }}>
+          <h3 style={{ margin: 0, color: 'var(--texto-oscuro)', fontSize: '20px' }}>📋 Información Personal</h3>
+          
           <div style={{ display: 'flex', gap: '10px' }}>
             {!editMode ? (
-              <button
-                onClick={() => setEditMode(true)}
-                style={{
-                  padding: '10px 24px',
-                  background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '10px',
-                  fontWeight: '600',
-                  fontSize: '14px',
-                  cursor: 'pointer',
-                  boxShadow: '0 3px 10px rgba(102,126,234,0.4)',
-                  transition: 'transform 0.2s'
-                }}
-                onMouseEnter={e => e.currentTarget.style.transform = 'translateY(-2px)'}
-                onMouseLeave={e => e.currentTarget.style.transform = 'translateY(0)'}
-              >
-                ✏️ Editar
+              <button onClick={() => setEditMode(true)} className="btn-explorar" style={{ padding: '10px 24px', fontSize: '14px' }}>
+                ✏️ Editar Datos
               </button>
             ) : (
               <>
-                <button
-                  onClick={handleCancelEdit}
-                  style={{
-                    padding: '10px 20px',
-                    background: 'white',
-                    color: '#6c757d',
-                    border: '2px solid #e9ecef',
-                    borderRadius: '10px',
-                    fontWeight: '600',
-                    fontSize: '14px',
-                    cursor: 'pointer',
-                    transition: 'background 0.2s'
-                  }}
-                  onMouseEnter={e => e.currentTarget.style.background = '#f8f9fa'}
-                  onMouseLeave={e => e.currentTarget.style.background = 'white'}
-                >
+                <button onClick={handleCancelEdit} style={{ padding: '10px 20px', background: 'transparent', color: 'var(--texto-secundario)', border: '2px solid var(--lineas-bordes)', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', transition: 'all 0.2s' }}>
                   Cancelar
                 </button>
-                <button
-                  onClick={handleGuardar}
-                  disabled={saving}
-                  style={{
-                    padding: '10px 24px',
-                    background: saving ? '#adb5bd' : 'linear-gradient(135deg, #28a745, #20c997)',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '10px',
-                    fontWeight: '600',
-                    fontSize: '14px',
-                    cursor: saving ? 'not-allowed' : 'pointer',
-                    boxShadow: '0 3px 10px rgba(40,167,69,0.35)',
-                    transition: 'transform 0.2s'
-                  }}
-                  onMouseEnter={e => { if (!saving) e.currentTarget.style.transform = 'translateY(-2px)'; }}
-                  onMouseLeave={e => e.currentTarget.style.transform = 'translateY(0)'}
-                >
-                  {saving ? '⏳ Guardando...' : '💾 Guardar'}
+                <button onClick={handleGuardar} disabled={saving} style={{ padding: '10px 24px', background: saving ? '#ccc' : '#2e7d32', color: 'white', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: saving ? 'not-allowed' : 'pointer', boxShadow: '0 4px 10px rgba(46,125,50,0.3)', transition: 'transform 0.2s' }}>
+                  {saving ? '⏳ Guardando...' : '💾 Guardar Cambios'}
                 </button>
               </>
             )}
           </div>
         </div>
 
-        {/* CAMPOS */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '18px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '25px' }}>
           {campos.map((campo) => (
             <div key={campo.key} style={{
-              background: '#f8f9fa',
+              background: 'var(--fondo-principal)',
               borderRadius: '12px',
-              padding: '18px',
-              border: editMode && !campo.disabled ? '2px solid #e9ecef' : '2px solid transparent',
-              transition: 'border-color 0.2s'
+              padding: '20px',
+              border: editMode && !campo.disabled ? '2px solid var(--color-primario)' : '2px solid transparent',
+              transition: 'all 0.3s'
             }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
-                <span style={{ fontSize: '18px' }}>{campo.icon}</span>
-                <label style={{ margin: 0, color: '#6c757d', fontSize: '12px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px' }}>
+                <span style={{ fontSize: '20px' }}>{campo.icon}</span>
+                <label style={{ margin: 0, color: 'var(--texto-oscuro)', fontSize: '13px', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '1px' }}>
                   {campo.label}
                 </label>
                 {campo.disabled && editMode && (
-                  <span style={{ fontSize: '11px', color: '#adb5bd', marginLeft: 'auto' }}>No editable</span>
+                  <span style={{ fontSize: '11px', color: 'var(--texto-secundario)', marginLeft: 'auto', fontStyle: 'italic' }}>No editable</span>
                 )}
               </div>
 
@@ -278,24 +200,19 @@ function MiPerfil() {
                   placeholder={campo.placeholder}
                   disabled={campo.disabled}
                   style={{
-                    width: '100%',
-                    boxSizing: 'border-box',
-                    padding: '10px 14px',
-                    border: '2px solid #e9ecef',
-                    borderRadius: '8px',
-                    fontSize: '15px',
-                    color: '#2c3e50',
-                    background: campo.disabled ? '#eee' : 'white',
-                    outline: 'none',
-                    transition: 'border-color 0.2s, box-shadow 0.2s',
+                    width: '100%', boxSizing: 'border-box', padding: '12px 15px',
+                    border: '1px solid var(--lineas-bordes)', borderRadius: '8px',
+                    fontSize: '16px', color: 'var(--texto-oscuro)',
+                    background: campo.disabled ? '#e9ecef' : 'white',
+                    outline: 'none', transition: 'border-color 0.2s, box-shadow 0.2s',
                     cursor: campo.disabled ? 'not-allowed' : 'text'
                   }}
-                  onFocus={e => { e.target.style.borderColor = '#667eea'; e.target.style.boxShadow = '0 0 0 3px rgba(102,126,234,0.15)'; }}
-                  onBlur={e => { e.target.style.borderColor = '#e9ecef'; e.target.style.boxShadow = 'none'; }}
+                  onFocus={e => { e.target.style.borderColor = 'var(--color-primario)'; e.target.style.boxShadow = '0 0 0 3px rgba(198,106,61,0.15)'; }}
+                  onBlur={e => { e.target.style.borderColor = 'var(--lineas-bordes)'; e.target.style.boxShadow = 'none'; }}
                 />
               ) : (
-                <p style={{ margin: 0, color: perfil[campo.key] ? '#2c3e50' : '#adb5bd', fontSize: '16px', fontWeight: '600' }}>
-                  {perfil[campo.key] || 'No especificado'}
+                <p style={{ margin: 0, color: perfil[campo.key] ? 'var(--texto-oscuro)' : 'var(--texto-secundario)', fontSize: '17px', fontWeight: 'bold' }}>
+                  {perfil[campo.key] || '---'}
                 </p>
               )}
             </div>
@@ -303,9 +220,8 @@ function MiPerfil() {
         </div>
       </div>
 
-      {/* NOTA INFERIOR */}
-      <p style={{ textAlign: 'center', color: '#adb5bd', fontSize: '13px', marginTop: '24px' }}>
-        Si necesitas cambiar tu email, comunícate con el administrador.
+      <p style={{ textAlign: 'center', color: 'var(--texto-secundario)', fontSize: '14px', marginTop: '30px', fontStyle: 'italic' }}>
+        Si necesitas actualizar tu correo electrónico o tipo de cuenta, por favor contacta a la administración.
       </p>
     </div>
   );
