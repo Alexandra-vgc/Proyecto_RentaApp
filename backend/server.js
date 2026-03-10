@@ -133,33 +133,92 @@ app.get('/api/admin/propiedades/:id', async (req, res) => {
   }
 });
 
+// Ejemplo de cómo debe estar en tu server.js
+// ✅ RUTA POST ACTUALIZADA CON TODOS LOS CAMPOS NUEVOS
 app.post('/api/admin/propiedades', async (req, res) => {
-  try {
-    const { sector, ciudad, precio, habitaciones, banos, descripcion, imagen_url } = req.body;
-    const codigo = `PROP-${Math.floor(Math.random() * 10000)}`; 
-    
-    const result = await pool.query(
-      'INSERT INTO propiedades (codigo, sector, ciudad, precio_mensual, habitaciones, banos, descripcion, imagen_url) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *',
-      [codigo, sector, ciudad, precio, habitaciones, banos, descripcion, imagen_url]
-    );
-    res.status(201).json(result.rows[0]);
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: "Error al crear la propiedad" });
-  }
-});
+    try {
+        const { 
+            codigo, sector, ciudad, direccion, 
+            precio_mensual, garantia, alicuota,
+            habitaciones, banos, metros_cuadrados, parqueaderos,
+            tipo_propiedad, estado_amoblado,
+            incluye_agua, incluye_luz, incluye_internet, mascotas,
+            reglas, descripcion, imagen_url, imagenes_extra, estado 
+        } = req.body;
 
+        // Validamos que el precio no llegue nulo (causa del error anterior)
+        const precioFinal = precio_mensual || 0;
+
+        const query = `
+            INSERT INTO propiedades (
+                codigo, sector, ciudad, direccion, 
+                precio_mensual, garantia, alicuota,
+                habitaciones, banos, metros_cuadrados, parqueaderos,
+                tipo_propiedad, estado_amoblado,
+                incluye_agua, incluye_luz, incluye_internet, mascotas_permitidas,
+                reglas, descripcion, imagen_url, imagenes_extra, estado
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22) 
+            RETURNING *`;
+
+        const values = [
+            codigo, sector, ciudad, direccion, 
+            precioFinal, garantia || 0, alicuota || 0,
+            habitaciones || 0, banos || 0, metros_cuadrados || 0, parqueaderos || 0,
+            tipo_propiedad || 'Departamento', estado_amoblado || 'Vacío',
+            incluye_agua || false, incluye_luz || false, incluye_internet || false, mascotas || false,
+            reglas || '', descripcion || '', imagen_url || null, imagenes_extra || [], estado || 'disponible'
+        ];
+
+        const result = await pool.query(query, values);
+        res.status(201).json(result.rows[0]);
+    } catch (error) {
+        console.error("❌ Error al insertar propiedad:", error.message);
+        res.status(500).json({ error: error.message });
+    }
+});
 app.put('/api/admin/propiedades/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const { sector, ciudad, precio, habitaciones, banos, descripcion, imagen_url } = req.body;
-    const result = await pool.query(
-      'UPDATE propiedades SET sector=$1, ciudad=$2, precio_mensual=$3, habitaciones=$4, banos=$5, descripcion=$6, imagen_url=$7 WHERE id=$8 RETURNING *',
-      [sector, ciudad, precio, habitaciones, banos, descripcion, imagen_url, id]
-    );
+    const { 
+      codigo, sector, ciudad, direccion, 
+      precio_mensual, garantia, alicuota,
+      habitaciones, banos, metros_cuadrados, parqueaderos,
+      tipo_propiedad, estado_amoblado,
+      incluye_agua, incluye_luz, incluye_internet, mascotas_permitidas,
+      reglas, descripcion, imagen_url, imagenes_extra, estado 
+    } = req.body;
+
+    const query = `
+      UPDATE propiedades SET 
+        codigo=$1, sector=$2, ciudad=$3, direccion=$4, 
+        precio_mensual=$5, garantia=$6, alicuota=$7,
+        habitaciones=$8, banos=$9, metros_cuadrados=$10, parqueaderos=$11,
+        tipo_propiedad=$12, estado_amoblado=$13,
+        incluye_agua=$14, incluye_luz=$15, incluye_internet=$16, 
+        mascotas_permitidas=$17, reglas=$18, descripcion=$19, 
+        imagen_url=$20, imagenes_extra=$21, estado=$22
+      WHERE id=$23 RETURNING *`;
+
+    const values = [
+      codigo, sector, ciudad, direccion, 
+      precio_mensual, garantia, alicuota,
+      habitaciones, banos, metros_cuadrados, parqueaderos,
+      tipo_propiedad, estado_amoblado,
+      incluye_agua, incluye_luz, incluye_internet, mascotas_permitidas,
+      reglas, descripcion, imagen_url, imagenes_extra, estado,
+      id
+    ];
+
+    const result = await pool.query(query, values);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ message: "Propiedad no encontrada" });
+    }
+
     res.json(result.rows[0]);
   } catch (error) {
-    res.status(500).json({ error: "Error al actualizar propiedad" });
+    console.error("❌ Error al editar propiedad:", error.message);
+    res.status(500).json({ error: error.message });
   }
 });
 

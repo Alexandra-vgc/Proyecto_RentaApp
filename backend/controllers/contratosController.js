@@ -13,124 +13,100 @@ const pool = new Pool({
   database: process.env.DB_NAME,
 });
 
-// Contraseña por defecto si no hay una en el .env
 const DEFAULT_PASSWORD = process.env.DEFAULT_USER_PASSWORD || 'MiRenta2026';
 
 /**
- * Función para asegurar que el invitado tenga una cuenta de usuario
- * para poder iniciar sesión y ver su contrato.
+ * Registra al cliente en la tabla 'inquilinos' y 'usuarios' 
+ * asegurando que los IDs estén sincronizados.
  */
-const ensureInquilinoUser = async (email, nombre) => {
-  if (!email) return null;
+const ensureInquilinoData = async (email, nombreCompleto) => {
+  if (!email) throw new Error("Email necesario");
   
-  // Verificamos si ya existe el usuario
-  const existing = await pool.query('SELECT * FROM usuarios WHERE email = $1', [email]);
-  if (existing.rows.length > 0) {
-    return existing.rows[0];
+  let userRes = await pool.query('SELECT id FROM usuarios WHERE email = $1', [email]);
+  let usuarioId;
+
+  if (userRes.rows.length > 0) {
+    usuarioId = userRes.rows[0].id;
+  } else {
+    const hashed = await bcrypt.hash(DEFAULT_PASSWORD, 10);
+    const newUser = await pool.query(
+      'INSERT INTO usuarios (nombre, email, password, rol) VALUES ($1, $2, $3, $4) RETURNING id',
+      [nombreCompleto, email, hashed, 'inquilino']
+    );
+    usuarioId = newUser.rows[0].id;
   }
 
-  // Si no existe, lo creamos con el rol 'inquilino'
-  const hashed = await bcrypt.hash(DEFAULT_PASSWORD, 10);
-  const result = await pool.query(
-    'INSERT INTO usuarios (nombre, email, password, rol) VALUES ($1, $2, $3, $4) RETURNING *',
-    [nombre || email, email, hashed, 'inquilino']
-  );
-  return result.rows[0];
+  const inquilinoRes = await pool.query('SELECT id FROM inquilinos WHERE email = $1', [email]);
+  
+  if (inquilinoRes.rows.length === 0) {
+    const partes = (nombreCompleto || 'Nuevo Inquilino').split(' ');
+    const nombre = partes[0];
+    const apellido = partes.slice(1).join(' ') || '.';
+    const cedulaUnica = `TEMP-${usuarioId}`;
+
+    await pool.query(
+      `INSERT INTO inquilinos (id, nombre, apellido, cedula, email, telefono, estado) 
+       VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+      [usuarioId, nombre, apellido, cedulaUnica, email, '0900000000', 'activo']
+    );
+  } else {
+    usuarioId = inquilinoRes.rows[0].id;
+  }
+
+  return usuarioId;
 };
 
-// ✅ CREAR CONTRATO Y ENVIAR CREDENCIALES
 export const crear = async (req, res) => {
   try {
     const { solicitud_id, fecha_inicio, fecha_fin, canon } = req.body;
 
-    // 1. Buscamos la propiedad conectada a esta solicitud
     const solRes = await pool.query(
-        'SELECT propiedad_id, correo_cliente, nombre_cliente FROM solicitudes_arriendo WHERE id = $1', 
-        [solicitud_id]
+      'SELECT propiedad_id, correo_cliente, nombre_cliente FROM solicitudes_arriendo WHERE id = $1',
+      [solicitud_id]
     );
-    
-    if (solRes.rows.length === 0) {
-        return res.status(404).json({ error: 'No se encontró la solicitud base.' });
-    }
 
-    const solInfo = solRes.rows[0];
-    const propiedad_id = solInfo.propiedad_id;
+    if (solRes.rows.length === 0) return res.status(404).json({ error: 'Solicitud no encontrada' });
 
-    // 2. Insertamos el contrato en la base de datos
+    const datos = solRes.rows[0];
+    const emailInquilino = datos.correo_cliente; 
+    const nombreInquilino = datos.nombre_cliente;
+
+    const idLegalParaContrato = await ensureInquilinoData(emailInquilino, nombreInquilino);
+
     const result = await pool.query(
-      `INSERT INTO contratos 
-      (solicitud_id, propiedad_id, fecha_inicio, fecha_fin, monto_mensual, estado)
-      VALUES ($1, $2, $3, $4, $5, $6)
-      RETURNING *`,
-      [solicitud_id, propiedad_id, fecha_inicio, fecha_fin, canon || 0, 'activo']
+      `INSERT INTO contratos (solicitud_id, propiedad_id, inquilino_id, fecha_inicio, fecha_fin, monto_mensual, dia_pago, estado)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`,
+      [solicitud_id, datos.propiedad_id, idLegalParaContrato, fecha_inicio, fecha_fin, canon || 0, 1, 'activo']
     );
 
-    const contrato = result.rows[0];
-
-    // 3. LOGICA DE ENVÍO DE CREDENCIALES (SEGUNDO CORREO)
-    if (solInfo.correo_cliente) {
-      // Aseguramos que el invitado tenga cuenta en la tabla 'usuarios'
-      await ensureInquilinoUser(solInfo.correo_cliente, solInfo.nombre_cliente);
-
-      const loginUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
-      
-      const subject = "🔑 Tus Credenciales de Acceso - MiRentaAPP";
-      const html = `
-        <div style="font-family: sans-serif; border: 1px solid #C66A3D; padding: 20px; border-radius: 10px;">
-            <h2 style="color: #4E5B3C;">¡Bienvenido/a, ${solInfo.nombre_cliente}!</h2>
-            <p>Se ha generado tu <b>Contrato Digital</b> con éxito para el inmueble #${propiedad_id}.</p>
-            <p>Usa los siguientes datos para ingresar al sistema y revisar tu documento:</p>
-            
-            <div style="background-color: #F5EFE6; padding: 15px; border-radius: 5px; margin: 20px 0;">
-                <p style="margin: 5px 0;"><b>Usuario (Correo):</b> ${solInfo.correo_cliente}</p>
-                <p style="margin: 5px 0;"><b>Contraseña Temporal:</b> <span style="color: #C66A3D; font-weight: bold;">${DEFAULT_PASSWORD}</span></p>
-            </div>
-
-            <p>Haz clic en el botón de abajo para iniciar sesión:</p>
-            <a href="${loginUrl}/login" 
-               style="background-color: #C66A3D; color: white; padding: 12px 25px; text-decoration: none; border-radius: 5px; display: inline-block; font-weight: bold;">
-               Iniciar Sesión
-            </a>
-
-            <p style="margin-top: 25px; font-size: 0.85em; color: #BFA58A;">
-                * Por seguridad, te recomendamos cambiar tu contraseña una vez que ingreses al panel de Inquilino.
-            </p>
-            <p style="font-size: 0.85em; color: #BFA58A;">Gracias por usar MiRentaAPP.</p>
-        </div>
-      `;
-
-      try {
-        // Enviamos el correo real usando tu mailer configurado con Gmail
+    // Envío de correo con el objeto corregido
+    try {
+      if (emailInquilino) {
         await sendMail({
-          to: solInfo.correo_cliente,
-          subject: subject,
-          html: html,
+          to: emailInquilino,
+          subject: "🔑 Tus credenciales de acceso - MiRentaApp",
+          html: `<h2>¡Bienvenido, ${nombreInquilino}!</h2><p>Email: ${emailInquilino}<br>Clave: ${DEFAULT_PASSWORD}</p>`
         });
-      } catch (mailError) {
-        // Si falla el envío, dejamos que el servidor siga funcionando sin detenerse.
       }
+    } catch (mailErr) {
+      console.error("⚠️ Error de correo:", mailErr.message);
     }
 
-    res.status(201).json(contrato);
+    res.status(201).json(result.rows[0]);
 
   } catch (error) {
-    console.error("❌ Error al crear contrato:", error);
-    res.status(500).json({ error: 'Error al crear contrato y enviar accesos.' });
+    console.error("❌ ERROR AL GENERAR CONTRATO:", error.message);
+    res.status(500).json({ error: error.message });
   }
 };
 
-// ✅ LISTAR CONTRATOS
+// --- AQUÍ EMPIEZAN LAS FUNCIONES QUE DABAN EL ERROR ---
+
 export const listar = async (req, res) => {
   try {
     const result = await pool.query(`
-      SELECT 
-        c.id, 
-        c.fecha_inicio, 
-        c.fecha_fin, 
-        c.monto_mensual AS canon, 
-        c.estado,
-        s.nombre_cliente,
-        p.sector AS nombre_propiedad
+      SELECT c.id, c.fecha_inicio, c.fecha_fin, c.monto_mensual AS canon, c.estado,
+             s.nombre_cliente, p.sector AS nombre_propiedad
       FROM contratos c
       LEFT JOIN solicitudes_arriendo s ON c.solicitud_id = s.id
       LEFT JOIN propiedades p ON c.propiedad_id = p.id
@@ -138,25 +114,20 @@ export const listar = async (req, res) => {
     `);
     res.json(result.rows);
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: 'Error al listar contratos' });
+    res.status(500).json({ error: 'Error al listar' });
   }
 };
 
-// ✅ ACTUALIZAR CONTRATO
 export const actualizar = async (req, res) => {
   try {
     const { id } = req.params;
     const { fecha_inicio, fecha_fin, canon, estado } = req.body;
     await pool.query(
-      `UPDATE contratos 
-       SET fecha_inicio = $1, fecha_fin = $2, monto_mensual = $3, estado = $4
-       WHERE id = $5`,
+      `UPDATE contratos SET fecha_inicio=$1, fecha_fin=$2, monto_mensual=$3, estado=$4 WHERE id=$5`,
       [fecha_inicio, fecha_fin, canon, estado, id]
     );
-    res.json({ message: 'Contrato actualizado correctamente' });
+    res.json({ message: 'Actualizado' });
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: 'Error al actualizar contrato' });
+    res.status(500).json({ error: 'Error al actualizar' });
   }
 };

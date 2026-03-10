@@ -1,5 +1,5 @@
 import { BrowserRouter as Router, Routes, Route, Navigate, Link } from 'react-router-dom';
-import { useState, useEffect } from "react"; // ✅ Importamos useEffect
+import { useState, useEffect } from "react"; 
 
 import WelcomeModal from "./components/WelcomeModal";
 import Login from './components/login';
@@ -12,27 +12,30 @@ import PropertyDetail from "./pages/PropertyDetail";
 import authService from './services/authService';
 
 function App() {
-  const [showWelcome, setShowWelcome] = useState(false);
-  
-  // ✅ NUEVO: Creamos un estado para saber si el usuario está autenticado
+  // 1. Lo dejamos en true para que inicie siempre
+  const [showWelcome, setShowWelcome] = useState(true);
   const [isAuth, setIsAuth] = useState(authService.isAuthenticated());
 
-  // ✅ NUEVO: Usamos useEffect para escuchar el "timbre"
   useEffect(() => {
-    // Esta función se ejecuta cuando suena el timbre
+    // 2. Quitamos la lógica de 'hasSeenWelcome' para que no lo bloquee
+    if (authService.isAuthenticated()) {
+      setShowWelcome(false);
+    }
+
     const handleAuthChange = () => {
-      setIsAuth(authService.isAuthenticated()); // Actualizamos el estado
+      setIsAuth(authService.isAuthenticated()); 
     };
 
-    // Ponemos la "oreja" para escuchar el evento
     window.addEventListener('authStateChange', handleAuthChange);
-
-    // Limpiamos la "oreja" si el componente se destruye (buena práctica)
     return () => {
       window.removeEventListener('authStateChange', handleAuthChange);
     };
   }, []);
 
+  // 3. La función ahora solo cierra el estado, ya no guarda en el navegador
+  const handleFinishWelcome = () => {
+    setShowWelcome(false);
+  };
 
   // 🛡️ Guardias de Seguridad (Sin cambios)
   const ClienteRoute = ({ children }) => {
@@ -51,7 +54,6 @@ function App() {
 
   return (
     <Router>
-      {/* ✅ CAMBIO CLAVE: Usamos el estado 'isAuth' que ahora sí se actualiza */}
       {!isAuth && (
         <div style={{ borderBottom: "1px solid #ddd", padding: "10px 20px", display: "flex", justifyContent: "space-between", backgroundColor: "#fff" }}>
           <Link to="/" style={{ textDecoration: "none", color: "inherit", fontSize: "1.2rem" }}>
@@ -64,8 +66,9 @@ function App() {
         </div>
       )}
 
+      {/* Se mostrará siempre que showWelcome sea true e isAuth sea false */}
       {showWelcome && !isAuth && (
-        <WelcomeModal onFinish={() => setShowWelcome(false)} />
+        <WelcomeModal onFinish={handleFinishWelcome} />
       )}
 
       <Routes>
