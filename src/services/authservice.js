@@ -14,7 +14,6 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
-// ✅ NUEVO: Creamos un "timbre" para avisar cuando cambie el estado de la sesión
 const authEvent = new Event('authStateChange');
 
 export const authService = {
@@ -24,7 +23,6 @@ export const authService = {
       if (response.data.token) {
         localStorage.setItem('token', response.data.token);
         localStorage.setItem('user', JSON.stringify(response.data.user));
-        // ✅ NUEVO: Tocamos el timbre al iniciar sesión
         window.dispatchEvent(authEvent);
       }
       return response.data;
@@ -39,7 +37,6 @@ export const authService = {
       if (response.data.token) {
         localStorage.setItem('token', response.data.token);
         localStorage.setItem('user', JSON.stringify(response.data.user));
-        // ✅ NUEVO: Tocamos el timbre al registrarse
         window.dispatchEvent(authEvent);
       }
       return response.data;
@@ -48,10 +45,36 @@ export const authService = {
     }
   },
 
+  async solicitarCodigo(email) {
+    try {
+      const response = await api.post('/recuperar', { email });
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: 'Error al solicitar código' };
+    }
+  },
+
+  async validarCodigo(email, codigo) {
+    try {
+      const response = await api.post('/validar-codigo', { email, codigo });
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: 'Código inválido o expirado' };
+    }
+  },
+
+  async cambiarPassword(email, nuevaPassword) {
+    try {
+      const response = await api.post('/reset-password', { email, nuevaPassword });
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: 'Error al cambiar contraseña' };
+    }
+  },
+
   logout() {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
-    // ✅ NUEVO: Tocamos el timbre al cerrar sesión
     window.dispatchEvent(authEvent);
   },
 

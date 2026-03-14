@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import authService from '../services/authService';
-import './Login.css';
+import bgImage from '../assets/registro.png'; /* La imagen que guardaste */
+import './Register.css';
 
 function Register() {
   const navigate = useNavigate();
@@ -13,7 +14,6 @@ function Register() {
     rol: 'inquilino'
   });
   
-  // ✅ NUEVO: Estado para saber si aceptó los términos
   const [aceptaTerminos, setAceptaTerminos] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -48,7 +48,6 @@ function Register() {
       return;
     }
 
-    // ✅ NUEVO: Validación extra por seguridad
     if (!aceptaTerminos) {
       setError('Debes aceptar los Términos y Condiciones para registrarte.');
       setLoading(false);
@@ -72,24 +71,22 @@ function Register() {
   };
 
   return (
-    <div className="login-container">
-      <div className="login-left">
-        <div className="login-illustration">
-          <img 
-            src="https://demos.pixinvent.com/vuexy-nextjs-admin-template/demo-4/images/illustrations/auth/v2-register-dark.png" 
-            alt="Register" 
-          />
-        </div>
-      </div>
+    <div className="register-container">
+      
+      {/* MITAD IZQUIERDA: TU IMAGEN */}
+      <div 
+        className="register-left" 
+        style={{ backgroundImage: `url(${bgImage})` }}
+      ></div>
 
-      <div className="login-right">
-        <div className="login-box">
-          <div className="login-header">
-            <h1>Crear Cuenta </h1>
-            <p>Completa el formulario para registrarte</p>
-          </div>
+      {/* MITAD DERECHA: TU FORMULARIO ALINEADO */}
+      <div className="register-right">
+        <div className="register-box">
+          
+          <h2>Crear Cuenta</h2>
+          <p className="subtitle">Completa el formulario para registrarte</p>
 
-          <form onSubmit={handleSubmit} className="login-form">
+          <form onSubmit={handleSubmit}>
             {error && (
               <div className="error-message">
                 <span>⚠️ {error}</span>
@@ -158,15 +155,6 @@ function Register() {
                 name="rol"
                 value={formData.rol}
                 onChange={handleChange}
-                style={{
-                  width: '100%',
-                  padding: '12px 16px',
-                  fontSize: '15px',
-                  border: '2px solid #e0e0e0',
-                  borderRadius: '8px',
-                  background: '#f8f9fa',
-                  cursor: 'pointer'
-                }}
               >
                 <option value="inquilino">Inquilino</option>
                 <option value="comprador">Comprador</option>
@@ -174,19 +162,18 @@ function Register() {
               </select>
             </div>
 
-            {/* ✅ NUEVO: Casilla de Términos y Condiciones */}
-            <div className="form-group" style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '10px', marginBottom: '20px' }}>
+            <div className="form-group" style={{ flexDirection: 'row', alignItems: 'center', gap: '10px', marginTop: '10px', marginBottom: '20px' }}>
               <input 
                 type="checkbox" 
                 id="terminos" 
                 checked={aceptaTerminos}
                 onChange={(e) => setAceptaTerminos(e.target.checked)}
-                style={{ width: '18px', height: '18px', cursor: 'pointer' }}
+                style={{ width: '18px', height: '18px', cursor: 'pointer', margin: 0 }}
                 required
               />
               <label htmlFor="terminos" style={{ fontSize: '0.9rem', color: '#555', cursor: 'pointer', margin: 0 }}>
                 He leído y acepto los{' '}
-                <Link to="/terminos" target="_blank" style={{ color: '#764ba2', textDecoration: 'underline' }}>
+                <Link to="/terminos" target="_blank" style={{ color: '#C66A3D', textDecoration: 'underline' }}>
                   Términos y Condiciones
                 </Link>
               </label>
@@ -194,8 +181,8 @@ function Register() {
 
             <button 
               type="submit" 
-              className="btn-login"
-              disabled={loading || !aceptaTerminos} /* El botón se bloquea si no acepta */
+              className="btn-register"
+              disabled={loading || !aceptaTerminos}
             >
               {loading ? 'Registrando...' : 'Crear Cuenta'}
             </button>

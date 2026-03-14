@@ -2,6 +2,7 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import pg from 'pg';
 import dotenv from 'dotenv';
+import { sendMail } from '../utils/mailer.js';
 
 dotenv.config();
 
@@ -14,7 +15,6 @@ const pool = new Pool({
   database: process.env.DB_NAME,
 });
 
-// REGISTRO
 export const register = async (req, res) => {
   try {
     const { nombre, email, password, rol } = req.body;
@@ -49,7 +49,6 @@ export const register = async (req, res) => {
   }
 };
 
-// LOGIN
 export const login = async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -66,7 +65,6 @@ export const login = async (req, res) => {
       return res.status(401).json({ message: 'Credenciales inválidas' });
     }
 
-    // BUSCAR SI ES INQUILINO O COMPRADOR
     let inquilinoId = null;
     let compradorId = null;
 
@@ -116,7 +114,6 @@ export const login = async (req, res) => {
   }
 };
 
-// VERIFICAR TOKEN
 export const verifyToken = (req, res, next) => {
   try {
     const token = req.headers.authorization?.split(' ')[1];
@@ -131,4 +128,80 @@ export const verifyToken = (req, res, next) => {
   } catch (error) {
     return res.status(401).json({ message: 'Token inválido' });
   }
-};  
+};
+
+const codigosRecuperacion = new Map();
+
+// ✅ LA FUNCIÓN MODIFICADA EMPIEZA AQUÍ
+export const solicitarCodigo = async (req, res) => {
+  try {
+    const { email } = req.body;
+    
+    console.log(`🔔 [BACKEND] Solicitud de código recibida para: ${email}`);
+    
+    // Convertimos ambos correos a minúsculas en la búsqueda para evitar errores de tipeo
+    const userResult = await pool.query('SELECT * FROM usuarios WHERE LOWER(email) = LOWER($1)', [email]);
+    
+    if (userResult.rows.length === 0) {
+      console.log(`❌ [BACKEND] El correo ${email} no se encontró en la base de datos.`);
+      return res.status(400).json({ message: 'No existe una cuenta con este correo.' });
+    }
+
+    const codigo = Math.floor(100000 + Math.random() * 900000).toString();
+    codigosRecuperacion.set(email, { codigo, expira: Date.now() + 15 * 60 * 1000 }); 
+
+    console.log(`💌 [BACKEND] Generando código ${codigo}. Intentando enviar correo...`);
+
+    await sendMail({
+      to: email,
+      subject: '🔑 Código de Recuperación - MiRentaApp',
+      html: `
+        <div style="font-family: Arial, sans-serif; text-align: center; padding: 20px;">
+          <h2 style="color: #C66A3D;">Recuperación de contraseña</h2>
+          <p>Tu código de seguridad de 6 dígitos es:</p>
+          <h1 style="background: #F5EFE6; padding: 15px; letter-spacing: 5px; color: #4A3F35; display: inline-block; border-radius: 8px;">${codigo}</h1>
+          <p style="color: #888; font-size: 12px;">Este código expirará en 15 minutos. Si no fuiste tú, ignora este mensaje.</p>
+        </div>
+      `
+    });
+
+    console.log(`✅ [BACKEND] Correo enviado exitosamente a ${email}`);
+    res.json({ message: 'Código enviado exitosamente' });
+
+  } catch (error) {
+    console.error('🔥 [BACKEND] Error enviando código:', error);
+    res.status(500).json({ message: 'Error al enviar el correo.' });
+  }
+};
+
+export const validarCodigo = (req, res) => {
+  const { email, codigo } = req.body;
+  const datos = codigosRecuperacion.get(email);
+
+  if (!datos) return res.status(400).json({ message: 'No hay solicitud pendiente para este correo' });
+  if (Date.now() > datos.expira) {
+    codigosRecuperacion.delete(email);
+    return res.status(400).json({ message: 'El código expiró. Solicita uno nuevo.' });
+  }
+  if (datos.codigo !== codigo) return res.status(400).json({ message: 'El código es incorrecto.' });
+
+  res.json({ message: 'Identidad verificada' });
+};
+
+export const resetPassword = async (req, res) => {
+  try {
+    const { email, nuevaPassword } = req.body;
+    const datos = codigosRecuperacion.get(email);
+
+    if (!datos) return res.status(400).json({ message: 'Valida el código primero.' });
+
+    const hash = await bcrypt.hash(nuevaPassword, 10);
+    // Aseguramos actualizar el correo sin importar mayúsculas
+    await pool.query('UPDATE usuarios SET password = $1 WHERE LOWER(email) = LOWER($2)', [hash, email]);
+    
+    codigosRecuperacion.delete(email); 
+    res.json({ message: 'Contraseña actualizada con éxito' });
+  } catch (error) {
+    res.status(500).json({ message: 'Error al actualizar contraseña' });
+  }
+};

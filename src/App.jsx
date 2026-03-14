@@ -23,7 +23,6 @@ function App() {
     };
 
     window.addEventListener('authStateChange', handleAuthChange);
-
     return () => {
       window.removeEventListener('authStateChange', handleAuthChange);
     };
@@ -52,12 +51,14 @@ function App() {
             <strong>MiRentaAPP</strong>
           </Link>
           <div>
-            <Link to="/login" style={{ marginRight: "15px", textDecoration: "none", color: "#764ba2" }}>Iniciar sesión</Link>
-            <Link to="/register" style={{ textDecoration: "none", color: "#764ba2" }}>Registrarse</Link>
+            {/* ✅ Cambié el morado antiguo por el Terracota para que combine */}
+            <Link to="/login" style={{ marginRight: "15px", textDecoration: "none", color: "#C66A3D", fontWeight: "bold" }}>Iniciar sesión</Link>
+            <Link to="/register" style={{ textDecoration: "none", color: "#C66A3D", fontWeight: "bold" }}>Registrarse</Link>
           </div>
         </div>
       )}
 
+      {/* Se mostrará siempre que showWelcome sea true e isAuth sea false */}
       {showWelcome && !isAuth && (
         <WelcomeModal onFinish={() => setShowWelcome(false)} />
       )}
@@ -68,7 +69,6 @@ function App() {
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
         
-        {/* ✅ NUEVO: Le decimos al guardia que esta ruta sí existe y es pública */}
         <Route path="/terminos" element={<Terminos />} />
 
         <Route 
@@ -87,7 +87,6 @@ function App() {
             </AdminRoute>
           } 
         />
-        {/* Este es el guardia que rebotaba a los usuarios si la ruta no existía */}
         <Route path="*" element={<Navigate to="/" />} />
       </Routes>
     </Router>
