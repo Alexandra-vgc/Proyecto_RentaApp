@@ -533,29 +533,92 @@ const AdminDashboard = () => {
           </Container>
         )}
 
-        {aseccion === "solicitudes" && (
-          <TableContainer component={Paper}>
-            <Table>
-              <TableHead sx={{ bgcolor: palette.fondoAlterno }}><TableRow><TableCell>Inmueble</TableCell><TableCell>Cliente</TableCell><TableCell>Fecha / Hora</TableCell><TableCell>Estado</TableCell><TableCell>Acciones</TableCell></TableRow></TableHead>
-              <TableBody>
-                {solicitudes.map((sol) => (
-                  <TableRow key={sol.id}>
-                    <TableCell>#{sol.propiedad_id}</TableCell>
-                    <TableCell>{sol.nombre_cliente} <br/><Typography variant="caption">{sol.correo_cliente}</Typography></TableCell>
-                    <TableCell>{sol.fecha_cita} | {sol.hora_cita}</TableCell>
-                    <TableCell><Chip label={sol.estado} color={sol.estado === 'aceptada' ? 'success' : 'default'} /></TableCell>
-                    <TableCell>
-                      <Stack direction="row" spacing={1}>
-                        {sol.estado === 'pendiente' && <Button variant="contained" size="small" onClick={() => handleAceptarCita(sol.id, sol.correo_cliente, sol.nombre_cliente)}>Aceptar</Button>}
-                        <Button variant="contained" size="small" sx={{ bgcolor: palette.botonPrincipal }} onClick={() => iniciarContrato(sol.id)} disabled={sol.estado !== 'aceptada'}>Contrato</Button>
-                      </Stack>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </TableContainer>
-        )}
+{aseccion === "solicitudes" && (
+  <TableContainer component={Paper} sx={{ borderRadius: "15px", boxShadow: "0 4px 20px rgba(0,0,0,0.05)" }}>
+    <Table>
+      <TableHead sx={{ bgcolor: palette.fondoAlterno }}>
+        <TableRow>
+          <TableCell sx={{ fontWeight: 'bold', color: palette.titulos }}>Inmueble</TableCell>
+          <TableCell sx={{ fontWeight: 'bold', color: palette.titulos }}>Cliente</TableCell>
+          <TableCell sx={{ fontWeight: 'bold', color: palette.titulos }}>Fecha / Hora</TableCell>
+          <TableCell sx={{ fontWeight: 'bold', color: palette.titulos }}>Estado</TableCell>
+          <TableCell sx={{ fontWeight: 'bold', color: palette.titulos }}>Acciones</TableCell>
+        </TableRow>
+      </TableHead>
+      <TableBody>
+        {solicitudes.map((sol) => {
+          // 1. Buscamos la propiedad para saber qué número le toca en tu lista
+          const indexProp = propiedades.findIndex(p => p.id === sol.propiedad_id) + 1;
+          const propInfo = propiedades.find(p => p.id === sol.propiedad_id);
+
+          return (
+            <TableRow key={sol.id} hover>
+              {/* ✅ Muestra Inmueble #1, #2, etc., según el orden de tus 3 departamentos */}
+              <TableCell>
+                <Typography variant="body2" sx={{ fontWeight: 800, color: palette.botonPrincipal }}>
+                  Inmueble #{indexProp > 0 ? indexProp : sol.propiedad_id}
+                </Typography>
+                <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block' }}>
+                  {propInfo ? propInfo.sector : 'Cargando...'}
+                </Typography>
+              </TableCell>
+
+              <TableCell>
+                <Typography variant="body2" sx={{ fontWeight: 600 }}>{sol.nombre_cliente}</Typography>
+                <Typography variant="caption" sx={{ color: palette.textoSecundario }}>{sol.correo_cliente}</Typography>
+              </TableCell>
+
+              {/* ✅ Limpiamos la fecha para que no salga el formato largo T05:00:00Z */}
+              <TableCell sx={{ fontSize: '0.85rem' }}>
+                {new Date(sol.fecha_cita).toLocaleDateString('es-EC', { day: '2-digit', month: '2-digit', year: 'numeric' })}
+                <br />
+                <Typography variant="caption" sx={{ fontWeight: 'bold', color: '#666' }}>{sol.hora_cita}</Typography>
+              </TableCell>
+
+              <TableCell>
+                <Chip 
+                  label={sol.estado} 
+                  size="small"
+                  sx={{ 
+                    bgcolor: sol.estado === 'aceptada' ? '#e8f5e9' : '#f5f5f5', 
+                    color: sol.estado === 'aceptada' ? '#2e7d32' : '#757575',
+                    fontWeight: 'bold',
+                    textTransform: 'uppercase',
+                    fontSize: '0.65rem'
+                  }} 
+                />
+              </TableCell>
+
+              <TableCell>
+                <Stack direction="row" spacing={1}>
+                  {sol.estado === 'pendiente' && (
+                    <Button 
+                      variant="contained" 
+                      size="small" 
+                      onClick={() => handleAceptarCita(sol.id, sol.correo_cliente, sol.nombre_cliente)}
+                      sx={{ textTransform: 'none', borderRadius: '8px' }}
+                    >
+                      Aceptar
+                    </Button>
+                  )}
+                  <Button 
+                    variant="contained" 
+                    size="small" 
+                    sx={{ bgcolor: palette.botonPrincipal, textTransform: 'none', borderRadius: '8px', fontWeight: 'bold' }} 
+                    onClick={() => iniciarContrato(sol.id)} 
+                    disabled={sol.estado !== 'aceptada'}
+                  >
+                    CONTRATO
+                  </Button>
+                </Stack>
+              </TableCell>
+            </TableRow>
+          );
+        })}
+      </TableBody>
+    </Table>
+  </TableContainer>
+)}
 
         {aseccion === "contratos" && (
           <Box>{contratos.map(c => (
