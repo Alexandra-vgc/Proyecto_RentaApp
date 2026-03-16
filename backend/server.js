@@ -10,6 +10,7 @@ import inquilinoRoutes from './routes/inquilinoRoutes.js';
 import compradorRoutes from './routes/compradorRoutes.js';
 import solicitudesRoutes from './routes/solicitudesRoutes.js'; 
 import contratosRoutes from './routes/contratosRoutes.js';
+import authRoutes from './routes/authroutes.js'; // ✅ ESTO FALTABA: Importar las rutas de autenticación
 
 dotenv.config();
 
@@ -44,7 +45,7 @@ pool.query('SELECT NOW()', (err, res) => {
 });
 
 // ==========================================
-// RUTAS AUTH
+// RUTAS AUTH (Las que ya tenías hardcodeadas)
 // ==========================================
 app.post('/api/auth/login', async (req, res) => {
   try {
@@ -87,7 +88,6 @@ app.post('/api/auth/register', async (req, res) => {
     
     const hash = await bcrypt.hash(password, 10);
     
-    // 🛡️ CANDADO DE SEGURIDAD: Solo dejamos pasar a estos 3. Nadie puede ser 'admin' por aquí.
     const rolesPermitidos = ['propietario', 'comprador', 'inquilino'];
     const rolSeguro = rolesPermitidos.includes(rol) ? rol : 'inquilino';
 
@@ -115,11 +115,10 @@ app.get('/api/admin/propiedades', async (req, res) => {
     res.status(500).json({ error: "Error al obtener propiedades" });
   }
 });
-// server.js
+
 app.get('/api/admin/propiedades/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    // Buscamos en la tabla 'propiedades' usando la columna 'id' que vi en tu captura
     const result = await pool.query("SELECT * FROM propiedades WHERE id = $1", [id]);
     
     if (result.rows.length === 0) {
@@ -133,8 +132,6 @@ app.get('/api/admin/propiedades/:id', async (req, res) => {
   }
 });
 
-// Ejemplo de cómo debe estar en tu server.js
-// ✅ RUTA POST ACTUALIZADA CON TODOS LOS CAMPOS NUEVOS
 app.post('/api/admin/propiedades', async (req, res) => {
     try {
         const { 
@@ -146,7 +143,6 @@ app.post('/api/admin/propiedades', async (req, res) => {
             reglas, descripcion, imagen_url, imagenes_extra, estado 
         } = req.body;
 
-        // Validamos que el precio no llegue nulo (causa del error anterior)
         const precioFinal = precio_mensual || 0;
 
         const query = `
@@ -176,6 +172,7 @@ app.post('/api/admin/propiedades', async (req, res) => {
         res.status(500).json({ error: error.message });
     }
 });
+
 app.put('/api/admin/propiedades/:id', async (req, res) => {
   try {
     const { id } = req.params;
@@ -239,6 +236,7 @@ app.use('/api/inquilino', inquilinoRoutes);
 app.use('/api/comprador', compradorRoutes);
 app.use('/api/solicitudes', solicitudesRoutes); 
 app.use('/api/contratos', contratosRoutes);
+app.use('/api/auth', authRoutes); // ✅ ESTO FALTABA: Conectar las rutas a la puerta /api/auth
 
 app.listen(PORT, () => {
   console.log(`🚀 Servidor en http://localhost:${PORT}`);
