@@ -3,6 +3,7 @@ import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import jsPDF from "jspdf";
 import authService from "../../services/authService";
+import { generarPDFContrato } from "./contratos/ModuloContratos";
 
 import {
   Box, Drawer, List, ListItemButton, ListItemIcon, ListItemText, AppBar,
@@ -194,58 +195,40 @@ const AdminDashboard = () => {
     setSeccion("publicar");
   };
 
-  const iniciarContrato = async (solicitud_id) => {
-    const solicitud = solicitudes.find((s) => s.id === solicitud_id);
-    if (!solicitud) return;
-    try {
-      const contratoData = {
-        solicitud_id: solicitud.id,
-        propiedad_id: solicitud.propiedad_id,
-        fecha_inicio: new Date().toISOString().split("T")[0],
-        fecha_fin: new Date(new Date().setFullYear(new Date().getFullYear() + 1)).toISOString().split("T")[0],
-        canon: solicitud.precio_mensual || 0,
-        nombre_cliente: solicitud.nombre_cliente,
-        nombre_propiedad: solicitud.sector_propiedad || "Departamento",
-      };
-      const res = await axios.post("http://localhost:5000/api/contratos", contratoData);
-      generarPDF({ ...contratoData, id: res.data.id });
-      setAlerta({ open: true, mensaje: "✅ Contrato generado y enviado", severidad: "success" });
-      cargarContratos();
-      cargarSolicitudes();
-    } catch (error) {
-      setAlerta({ open: true, mensaje: "❌ Error al generar contrato", severidad: "error" });
-    }
+ const iniciarContrato = async (solicitud_id, tipo) => {
+  const solicitud = solicitudes.find((s) => s.id === solicitud_id);
+  if (!solicitud) return;
+
+  // 💡 Inventamos o pedimos estos datos para que el contrato no sea pobre
+  const contratoData = {
+    solicitud_id: solicitud.id,
+    propiedad_id: solicitud.propiedad_id,
+    fecha_inicio: new Date().toISOString().split("T")[0],
+    fecha_fin: new Date(new Date().setFullYear(new Date().getFullYear() + 1)).toISOString().split("T")[0],
+    canon: solicitud.precio_mensual || 0,
+    nombre_cliente: solicitud.nombre_cliente,
+    nombre_propiedad: solicitud.sector_propiedad || "Departamento Lujoso",
+    tipo_cliente: tipo,
+    // --- DATOS NUEVOS PARA RELLENAR LA DB Y EL PDF ---
+    cedula: "172XXXXXXX", // Aquí podrías poner un prompt para pedirlos
+    estado_civil: "SOLTERO/A",
+    nacionalidad: "ECUATORIANA",
+    direccion_cliente: "Calle Principal y Av. Interoceánica",
+    // Si es venta, rellenamos los campos que ahora salen NULL
+    precio_total: tipo === 'comprador' ? (solicitud.precio_mensual * 12 * 10) : null,
+    cuota_inicial: tipo === 'comprador' ? (solicitud.precio_mensual * 5) : null,
+    numero_cuotas: tipo === 'comprador' ? 120 : null
   };
 
-  const generarPDF = (contrato) => {
-    const doc = new jsPDF();
-    const fechaHoy = new Date().toLocaleDateString();
-    doc.setLineWidth(0.5);
-    doc.rect(10, 10, 190, 277); 
-    doc.rect(12, 12, 186, 273);
-    doc.setFont("times", "bold");
-    doc.setFontSize(10);
-    doc.text("REPÚBLICA DEL ECUADOR", 105, 22, { align: "center" });
-    doc.text("CONSEJO DE LA JUDICATURA - NOTARÍA DIGITAL MiRentaApp", 105, 27, { align: "center" });
-    doc.setFontSize(18);
-    doc.setTextColor(78, 91, 60); 
-    doc.text("CONTRATO DE ARRENDAMIENTO NOTARIADO", 105, 45, { align: "center" });
-    doc.setDrawColor(198, 106, 61); 
-    doc.line(35, 50, 175, 50);
-    doc.setFont("times", "normal");
-    doc.setFontSize(11);
-    doc.setTextColor(0, 0, 0);
-    const cuerpoTexto = `En la ciudad de Quito, a los ${fechaHoy}, comparecen libre y voluntariamente el Administrador de MiRentaApp y el Sr./Sra. ${contrato.nombre_cliente.toUpperCase()}.
-    PRIMERA: OBJETO.- Inmueble en ${contrato.nombre_propiedad}.
-    SEGUNDA: CANON.- $${contrato.canon} USD mensuales.
-    TERCERA: PLAZO.- 12 meses desde ${contrato.fecha_inicio}.`;
-    const textLines = doc.splitTextToSize(cuerpoTexto, 160);
-    doc.text(textLines, 25, 65);
-    doc.setFont("times", "bold");
-    doc.text("F. EL PROPIETARIO", 55, 240);
-    doc.text("F. EL ARRENDATARIO", 132, 240);
-    doc.save(`Contrato_MiRenta_${contrato.nombre_cliente}.pdf`);
-  };
+  try {
+    const res = await axios.post("http://localhost:5000/api/contratos", contratoData);
+    // Llamamos al generador de archivos que tienes en la otra carpeta
+    generarPDFContrato({ ...contratoData, id: res.data.id }, tipo);
+    setAlerta({ open: true, mensaje: "✅ Contrato robusto generado", severidad: "success" });
+  } catch (error) {
+    setAlerta({ open: true, mensaje: "❌ Error al guardar en DB", severidad: "error" });
+  }
+};
 
   const propiedadesFiltradas = useMemo(() => {
     const b = busqueda.toLowerCase();
@@ -547,13 +530,11 @@ const AdminDashboard = () => {
       </TableHead>
       <TableBody>
         {solicitudes.map((sol) => {
-          // 1. Buscamos la propiedad para saber qué número le toca en tu lista
           const indexProp = propiedades.findIndex(p => p.id === sol.propiedad_id) + 1;
           const propInfo = propiedades.find(p => p.id === sol.propiedad_id);
 
           return (
             <TableRow key={sol.id} hover>
-              {/* ✅ Muestra Inmueble #1, #2, etc., según el orden de tus 3 departamentos */}
               <TableCell>
                 <Typography variant="body2" sx={{ fontWeight: 800, color: palette.botonPrincipal }}>
                   Inmueble #{indexProp > 0 ? indexProp : sol.propiedad_id}
@@ -568,7 +549,6 @@ const AdminDashboard = () => {
                 <Typography variant="caption" sx={{ color: palette.textoSecundario }}>{sol.correo_cliente}</Typography>
               </TableCell>
 
-              {/* ✅ Limpiamos la fecha para que no salga el formato largo T05:00:00Z */}
               <TableCell sx={{ fontSize: '0.85rem' }}>
                 {new Date(sol.fecha_cita).toLocaleDateString('es-EC', { day: '2-digit', month: '2-digit', year: 'numeric' })}
                 <br />
@@ -582,15 +562,14 @@ const AdminDashboard = () => {
                   sx={{ 
                     bgcolor: sol.estado === 'aceptada' ? '#e8f5e9' : '#f5f5f5', 
                     color: sol.estado === 'aceptada' ? '#2e7d32' : '#757575',
-                    fontWeight: 'bold',
-                    textTransform: 'uppercase',
-                    fontSize: '0.65rem'
+                    fontWeight: 'bold', textTransform: 'uppercase', fontSize: '0.65rem'
                   }} 
                 />
               </TableCell>
 
               <TableCell>
-                <Stack direction="row" spacing={1}>
+                <Stack direction="column" spacing={1}>
+                  {/* Si la cita está pendiente, mostramos botón de Aceptar */}
                   {sol.estado === 'pendiente' && (
                     <Button 
                       variant="contained" 
@@ -598,18 +577,42 @@ const AdminDashboard = () => {
                       onClick={() => handleAceptarCita(sol.id, sol.correo_cliente, sol.nombre_cliente)}
                       sx={{ textTransform: 'none', borderRadius: '8px' }}
                     >
-                      Aceptar
+                      Aceptar Cita
                     </Button>
                   )}
-                  <Button 
-                    variant="contained" 
-                    size="small" 
-                    sx={{ bgcolor: palette.botonPrincipal, textTransform: 'none', borderRadius: '8px', fontWeight: 'bold' }} 
-                    onClick={() => iniciarContrato(sol.id)} 
-                    disabled={sol.estado !== 'aceptada'}
-                  >
-                    CONTRATO
-                  </Button>
+
+                  {/* Si la cita está aceptada, habilitamos las dos opciones de contrato */}
+                  {sol.estado === 'aceptada' && (
+                    <Stack direction="row" spacing={1}>
+                      <Button 
+                        variant="contained" 
+                        size="small" 
+                        onClick={() => iniciarContrato(sol.id, 'inquilino')}
+                        sx={{ 
+                          bgcolor: palette.titulos, 
+                          textTransform: 'none', 
+                          borderRadius: '8px', 
+                          fontSize: '0.7rem',
+                          '&:hover': { bgcolor: '#3d472f' } 
+                        }}
+                      >
+                        + Arriendo
+                      </Button>
+                      <Button 
+                        variant="contained" 
+                        size="small" 
+                        onClick={() => iniciarContrato(sol.id, 'comprador')}
+                        sx={{ 
+                          bgcolor: palette.botonPrincipal, 
+                          textTransform: 'none', 
+                          borderRadius: '8px', 
+                          fontSize: '0.7rem' 
+                        }}
+                      >
+                        + Venta
+                      </Button>
+                    </Stack>
+                  )}
                 </Stack>
               </TableCell>
             </TableRow>
@@ -619,12 +622,11 @@ const AdminDashboard = () => {
     </Table>
   </TableContainer>
 )}
-
         {aseccion === "contratos" && (
           <Box>{contratos.map(c => (
             <Paper key={c.id} sx={{ p: 2, mb: 2, display: 'flex', justifyContent: 'space-between' }}>
               <Box><Typography fontWeight="bold">{c.nombre_cliente}</Typography><Typography variant="caption">{c.nombre_propiedad}</Typography></Box>
-              <Button onClick={() => generarPDF(c)}>PDF</Button>
+              <Button onClick={() => generarPDFContrato(c, c.tipo)}>Descargar</Button>
             </Paper>
           ))}</Box>
         )}

@@ -60,36 +60,54 @@ export const aceptarSolicitud = async (req, res) => {
 
         const solicitud = result.rows[0];
 
-        // Formatear fecha para el correo (Opcional pero recomendado)
+        // Formatear fecha para el correo
         const fechaFormateada = new Date(solicitud.fecha_cita).toLocaleDateString('es-EC', {
             year: 'numeric', month: 'long', day: 'numeric'
         });
 
         if (solicitud.correo_cliente) {
             const subject = "✅ Tu cita ha sido ACEPTADA - MiRentaAPP";
+            
+            // ✅ DISEÑO NUEVO: Solo notificación, sin botones de registro
             const html = `
-                <div style="font-family: sans-serif; border: 1px solid #C66A3D; padding: 20px; border-radius: 10px;">
-                    <h2 style="color: #4E5B3C;">¡Hola, ${solicitud.nombre_cliente}!</h2>
-                    <p>El propietario ha <b>ACEPTADO</b> tu solicitud de visita para el inmueble <b>#${solicitud.propiedad_id}</b>.</p>
-                    <p><b>📅 Detalles de la cita confirmada:</b></p>
-                    <ul>
-                        <li><b>Fecha:</b> ${fechaFormateada}</li>
-                        <li><b>Hora:</b> ${solicitud.hora_cita}</li>
-                    </ul>
-                    <hr style="border: 0; border-top: 1px solid #eee;">
-                    <p>Si después de la visita decides arrendar, deberás registrarte con este correo para recibir tu contrato digital:</p>
-                    <a href="http://localhost:5173/register" 
-                       style="background-color: #C66A3D; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block; font-weight: bold;">
-                       Registrarse en MiRentaAPP
-                    </a>
+                <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; border: 1px solid #C66A3D; padding: 30px; border-radius: 15px; max-width: 550px; margin: auto; line-height: 1.6;">
+                    <h2 style="color: #4E5B3C; text-align: center; margin-bottom: 20px;">¡Confirmación de Cita!</h2>
+                    
+                    <p style="font-size: 16px; color: #333;">
+                        Estimado/a <b>${solicitud.nombre_cliente}</b>,
+                    </p>
+                    
+                    <p style="font-size: 15px; color: #444;">
+                        Es un gusto saludarte. Te notificamos que tu solicitud de visita para el inmueble identificado con el código <b>#${solicitud.propiedad_id}</b> ha sido revisada y <b>APROBADA</b> con éxito por el propietario.
+                    </p>
+                    
+                    <div style="background-color: #FDF8F5; border: 1px dashed #C66A3D; padding: 20px; border-radius: 10px; margin: 25px 0;">
+                        <h4 style="margin-top: 0; color: #C66A3D; text-transform: uppercase; letter-spacing: 1px;">📍 Información de Encuentro:</h4>
+                        <p style="margin: 8px 0; font-size: 15px;"><b>📅 Fecha:</b> ${fechaFormateada}</p>
+                        <p style="margin: 8px 0; font-size: 15px;"><b>⏰ Hora:</b> ${solicitud.hora_cita} </p>
+                        <p style="margin: 8px 0; font-size: 14px; color: #666;"><i>(Se recomienda llegar con 5 minutos de antelación)</i></p>
+                    </div>
+
+                    <p style="color: #333; font-size: 15px;">
+                        Estamos emocionados de mostrarte tu posible próximo hogar. Esta visita es el primer paso para encontrar el lugar ideal para ti. Por el momento, <b>no necesitas realizar ninguna acción adicional</b> en el sistema.
+                    </p>
+
+                    <p style="color: #555; font-size: 14px; margin-top: 20px; border-top: 1px solid #eee; padding-top: 15px; text-align: center;">
+                        Si presentas algún inconveniente o deseas reprogramar, por favor comunícate con nosotros lo antes posible.
+                    </p>
+                    
+                    <p style="font-size: 12px; color: #999; text-align: center; margin-top: 30px;">
+                        Atentamente,<br>
+                        <b>Equipo de Administración MiRentaAPP</b><br>
+                        <i>Gestión Digital de Inmuebles</i>
+                    </p>
                 </div>
             `;
             
-            // Intento de envío de correo (no rompemos la respuesta si falla)
             try {
                 await sendMail({ to: solicitud.correo_cliente, subject, html });
             } catch (mailError) {
-                // Se ignora el error de envío para no afectar la respuesta.
+                console.error("Error enviando mail:", mailError);
             }
         }
 
@@ -99,7 +117,6 @@ export const aceptarSolicitud = async (req, res) => {
         res.status(500).json({ error: "Error en el servidor: " + error.message });
     }
 };
-
 export const listarPorPropietario = async (req, res) => {
     try {
         const result = await pool.query(

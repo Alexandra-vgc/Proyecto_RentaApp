@@ -23,12 +23,21 @@ function Login() {
     setLoading(true); setError('');
     try {
       await authService.login(email, password);
-      const user = authService.getCurrentUser();
+      
+      // Obtenemos el usuario con su rol real desde el servicio
+      const user = authService.getCurrentUser(); 
+
+      // --- 🚩 LÓGICA DE REDIRECCIÓN CORREGIDA ---
       if (user.rol === 'admin' || user.rol === 'propietario') {
         navigate('/admin');
       } else {
+        // Todos los clientes usan la ruta /dashboard y el componente asigna su vista según rol
         navigate('/dashboard');
       }
+      
+      // ✅ Recargamos para forzar actualización global de estado (opcional)
+      window.location.reload(); 
+
     } catch (err) {
       setError(err.message || 'Error al iniciar sesión');
     } finally {

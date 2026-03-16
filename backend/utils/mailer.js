@@ -16,9 +16,10 @@ export const sendMail = async (options) => { // Cambiamos a recibir un objeto 'o
   try {
     const mailOptions = {
       from: `"MiRentaApp 🏠" <${process.env.EMAIL_USER}>`,
-      to: options.to,      // <--- Aquí es donde Nodemailer busca el correo
+      to: options.to,
       subject: options.subject,
-      html: options.html
+      html: options.html,
+      text: options.text || options.html.replace(/<[^>]*>/g, '').replace(/\s{2,}/g, ' ').trim()
     };
 
     console.log("📤 Intentando enviar a:", mailOptions.to);
