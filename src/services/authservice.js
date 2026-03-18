@@ -6,6 +6,7 @@ const api = axios.create({
   baseURL: API_URL,
 });
 
+// Interceptor para inyectar el token en cada petición
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem('token');
   if (token) {
@@ -91,10 +92,13 @@ export const authService = {
     return localStorage.getItem('token');
   },
 
+  // ✅ CORRECCIÓN CLAVE: Separar las rutas de la API según el rol exacto
   getApiBase() {
     const user = this.getCurrentUser();
     if (user?.rol === 'comprador') {
       return 'http://localhost:5000/api/comprador';
+    } else if (user?.rol === 'admin' || user?.rol === 'propietario') {
+      return 'http://localhost:5000/api/admin'; 
     } else {
       return 'http://localhost:5000/api/inquilino';
     }

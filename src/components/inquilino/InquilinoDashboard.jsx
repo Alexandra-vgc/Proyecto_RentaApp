@@ -68,7 +68,7 @@ function InquilinoDashboard() {
 
   return (
     <div className="inquilino-dashboard">
-      {/* NAVBAR: Ahora súper limpia, solo con el Logo y el botón de Cerrar Sesión */}
+      {/* NAVBAR */}
       <nav className="dashboard-nav">
         <div className="nav-brand">
           <h2 onClick={() => navigate('/')} style={{ cursor: 'pointer' }} title="Volver al inicio">
@@ -86,7 +86,6 @@ function InquilinoDashboard() {
         {/* SIDEBAR */}
         <aside className="sidebar">
           
-          {/* ✅ NUEVO: PERFIL DEL USUARIO EN EL SIDEBAR */}
           <div className="sidebar-profile">
             <div className="profile-avatar">
               {primerNombre.charAt(0).toUpperCase()}
@@ -118,7 +117,6 @@ function InquilinoDashboard() {
           {activeTab === 'inicio' && (
             <div className="inicio-tab-animado">
               
-              {/* ✅ BANNER CORREGIDO CON BIENVENIDA PERSONALIZADA */}
               <div className="welcome-banner">
                 <h1>¡Bienvenida, {primerNombre}! 👋</h1>
                 <p>Aquí tienes la visión general de tu estado y propiedades asignadas.</p>
@@ -133,7 +131,7 @@ function InquilinoDashboard() {
                   <button className="btn-explorar" onClick={() => navigate('/')}>Ver Catálogo</button>
                 </div>
               ) : (
-                /* ESTADÍSTICAS ESTILO DASHBOARD PROFESIONAL */
+                /* ESTADÍSTICAS */
                 <>
                   <div className="stats-grid">
                     <div className="stat-card modern-card">
@@ -175,14 +173,29 @@ function InquilinoDashboard() {
                     </div>
                   )}
 
+                  {/* 🔥 LÓGICA CORREGIDA PARA LAS ALERTAS DE PAGO */}
                   {dashboardData?.proximoPago && (
-                    <div className="alert-section">
-                      <div className="alert-content">
-                        <h3 style={{margin: '0 0 5px 0', color: '#D9534F'}}>⚠️ Próximo Vencimiento</h3>
-                        <p style={{margin: 0, color: '#4A3F35'}}>Tienes una cuota de <strong>${dashboardData.proximoPago.monto}</strong> correspondiente a <strong>{dashboardData.proximoPago.mes}</strong>.</p>
+                    dashboardData.proximoPago.estado === 'pendiente' ? (
+                      /* MENSAJE CUANDO YA PAGÓ Y ESTÁ EN REVISIÓN */
+                      <div className="alert-section" style={{ backgroundColor: '#fff8e1', border: '1px solid #ffcc80', borderLeft: '5px solid #ffb300', padding: '20px', borderRadius: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <div className="alert-content">
+                          <h3 style={{margin: '0 0 5px 0', color: '#f57c00'}}> Pago en Revisión</h3>
+                          <p style={{margin: 0, color: '#4A3F35'}}>
+                            Tu pago por <strong>${dashboardData.proximoPago.monto}</strong> correspondiente a <strong>{dashboardData.proximoPago.mes}</strong> está siendo revisado por la administración.
+                          </p>
+                        </div>
+                        <div style={{ fontSize: '2.5rem', opacity: 0.8 }}> </div>
                       </div>
-                      <button className="btn-pay-now" onClick={() => setShowRegistrarPago(true)}>Pagar Ahora</button>
-                    </div>
+                    ) : (
+                      /* MENSAJE ROJO CUANDO DEBE PAGAR (Atrasado, etc.) */
+                      <div className="alert-section">
+                        <div className="alert-content">
+                          <h3 style={{margin: '0 0 5px 0', color: '#D9534F'}}>⚠️ Próximo Vencimiento</h3>
+                          <p style={{margin: 0, color: '#4A3F35'}}>Tienes una cuota pendiente de <strong>${dashboardData.proximoPago.monto}</strong> correspondiente a <strong>{dashboardData.proximoPago.mes}</strong>.</p>
+                        </div>
+                        <button className="btn-pay-now" onClick={() => setShowRegistrarPago(true)}>Pagar Ahora</button>
+                      </div>
+                    )
                   )}
                 </>
               )}
@@ -195,7 +208,8 @@ function InquilinoDashboard() {
           {activeTab === 'perfil' && <MiPerfil />}
         </main>
       </div>
-      {/* Solo mostramos el botón flotante si el usuario TIENE un contrato asignado */}
+      
+      {/* Botón flotante */}
       {tieneContrato && (
         <button className="btn-fab" onClick={() => setShowRegistrarPago(true)} title={`Registrar ${esComprador ? 'Cuota' : 'Pago'}`}>
           💰

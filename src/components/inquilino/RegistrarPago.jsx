@@ -1,21 +1,27 @@
 import React, { useState } from 'react';
 import axios from 'axios';
 import authService from '../../services/authService';
+import './RegistrarPago.css'; 
 
 function RegistrarPago({ onClose, onPagoRegistrado }) {
   const [formData, setFormData] = useState({
     monto: '',
     mes: '',
     metodo: 'transferencia',
-    comprobante_url: '' // Aquí guardaremos la imagen convertida
+    comprobante_url: '' 
   });
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null); 
   const tipoUsuario = authService.getTipoUsuario();
 
-  // Función para convertir la imagen a texto (Base64) para guardarla fácil
   const handleImageUpload = (e) => {
     const file = e.target.files[0];
     if (file) {
+      if (file.size > 5000000) { 
+        setError("La imagen es muy pesada. Por favor sube una de menos de 5MB.");
+        return;
+      }
+      setError(null);
       const reader = new FileReader();
       reader.onloadend = () => {
         setFormData({ ...formData, comprobante_url: reader.result });
@@ -27,6 +33,13 @@ function RegistrarPago({ onClose, onPagoRegistrado }) {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
+    setError(null);
+
+    if (!formData.monto || !formData.mes || !formData.comprobante_url) {
+        setError("Por favor, completa todos los campos y sube el comprobante.");
+        setLoading(false);
+        return;
+    }
 
     try {
       const token = authService.getToken();
@@ -37,35 +50,50 @@ function RegistrarPago({ onClose, onPagoRegistrado }) {
       });
       
       alert('✅ Pago enviado para revisión exitosamente.');
-      onPagoRegistrado(); // Cierra la ventana y recarga el dashboard
-    } catch (error) {
-      console.error('Error al registrar pago:', error);
-      alert('Hubo un error al enviar el pago. Inténtalo de nuevo.');
+      onPagoRegistrado(); 
+    } catch (err) {
+      console.error('Error al registrar pago:', err);
+      setError('Hubo un error al enviar el pago. Verifica tu conexión o intenta de nuevo.');
       setLoading(false);
     }
   };
 
   return (
-    <div style={{
-      position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh',
-      backgroundColor: 'rgba(74, 63, 53, 0.7)', // Fondo oscuro elegante
-      display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000
-    }}>
-      <div style={{
-        backgroundColor: 'var(--fondo-tarjeta)', padding: '40px', borderRadius: '16px',
-        width: '100%', maxWidth: '500px', boxShadow: '0 10px 30px rgba(0,0,0,0.2)',
-        border: '2px solid var(--color-primario)'
-      }}>
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ borderColor: 'var(--color-primario)', border: '2px solid' }}>
         
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '25px' }}>
-          <h2 style={{ margin: 0, color: 'var(--texto-oscuro)' }}>Registrar Nuevo Pago</h2>
-          <button onClick={onClose} style={{ background: 'none', border: 'none', fontSize: '1.5rem', cursor: 'pointer', color: 'var(--texto-secundario)' }}>✖</button>
+        <div className="modal-header">
+          <h2 style={{ color: 'var(--texto-oscuro)' }}>Registrar Nuevo Pago</h2>
+          <button className="btn-close" onClick={onClose}>✖</button>
         </div>
 
-        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+        <form onSubmit={handleSubmit} className="pago-form">
           
-          <div>
-            <label style={{ display: 'block', color: 'var(--texto-oscuro)', fontWeight: 'bold', marginBottom: '8px' }}>Monto a Pagar ($)</label>
+          {/*  AQUÍ ESTÁ EL NUEVO CUADRO CON LOS DATOS BANCARIOS  */}
+          <div style={{ 
+            backgroundColor: '#fdf8f5', 
+            border: '1px solid var(--color-primario)', 
+            borderLeft: '5px solid var(--color-primario)',
+            padding: '15px', 
+            borderRadius: '8px', 
+            marginBottom: '20px' 
+          }}>
+            <h4 style={{ margin: '0 0 10px 0', color: 'var(--color-primario)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+               Datos para Transferencia o Depósito
+            </h4>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', fontSize: '0.9rem', color: 'var(--texto-oscuro)' }}>
+              <div><strong>Banco:</strong> Banco Pichincha</div>
+              <div><strong>Tipo de Cuenta:</strong> Ahorros</div>
+              <div><strong>Número:</strong> 2200123456</div>
+              <div><strong>Titular:</strong> MiRentaApp S.A.</div>
+              <div><strong>CI/RUC:</strong> 1790000000001</div>
+            </div>
+          </div>
+
+          {error && <div className="error-message">{error}</div>}
+          
+          <div className="form-group">
+            <label style={{ color: 'var(--texto-oscuro)' }}>Monto a Pagar ($)</label>
             <input 
               type="number" 
               required 
@@ -73,47 +101,47 @@ function RegistrarPago({ onClose, onPagoRegistrado }) {
               step="0.01"
               value={formData.monto}
               onChange={(e) => setFormData({...formData, monto: e.target.value})}
-              style={{ width: '100%', padding: '12px', borderRadius: '8px', border: '1px solid var(--lineas-bordes)', fontSize: '1rem', backgroundColor: '#fff' }}
               placeholder="Ej: 450.00"
             />
           </div>
 
-          <div>
-            <label style={{ display: 'block', color: 'var(--texto-oscuro)', fontWeight: 'bold', marginBottom: '8px' }}>Mes Correspondiente</label>
+          <div className="form-group">
+            <label style={{ color: 'var(--texto-oscuro)' }}>Mes Correspondiente</label>
             <select 
               required
               value={formData.mes}
               onChange={(e) => setFormData({...formData, mes: e.target.value})}
-              style={{ width: '100%', padding: '12px', borderRadius: '8px', border: '1px solid var(--lineas-bordes)', fontSize: '1rem', backgroundColor: '#fff', cursor: 'pointer' }}
             >
               <option value="">Selecciona un mes...</option>
-              <option value="Enero 2026">Enero 2026</option>
-              <option value="Febrero 2026">Febrero 2026</option>
-              <option value="Marzo 2026">Marzo 2026</option>
-              <option value="Abril 2026">Abril 2026</option>
-              <option value="Mayo 2026">Mayo 2026</option>
+              <option value="01-2026">Enero 2026</option>
+              <option value="02-2026">Febrero 2026</option>
+              <option value="03-2026">Marzo 2026</option>
+              <option value="04-2026">Abril 2026</option>
+              <option value="05-2026">Mayo 2026</option>
             </select>
           </div>
 
-          <div>
-            <label style={{ display: 'block', color: 'var(--texto-oscuro)', fontWeight: 'bold', marginBottom: '8px' }}>Comprobante (Transferencia o Depósito)</label>
+          <div className="form-group">
+            <label style={{ color: 'var(--texto-oscuro)' }}>Sube tu Comprobante</label>
             <input 
               type="file" 
               accept="image/*"
               onChange={handleImageUpload}
               required
-              style={{ width: '100%', padding: '10px', backgroundColor: 'var(--fondo-principal)', borderRadius: '8px', border: '1px dashed var(--color-primario)', color: 'var(--texto-oscuro)' }}
+              style={{ border: '1px dashed var(--color-primario)', background: 'var(--fondo-principal)', width: '100%', padding: '10px', borderRadius: '8px' }}
             />
             {formData.comprobante_url && (
-              <p style={{ margin: '10px 0 0 0', fontSize: '0.85rem', color: '#2e7d32', fontWeight: 'bold' }}>✓ Imagen cargada lista para enviar</p>
+              <p style={{ margin: '10px 0 0 0', fontSize: '0.85rem', color: '#2e7d32', fontWeight: 'bold' }}>
+                ✓ Imagen cargada lista para enviar
+              </p>
             )}
           </div>
 
-          <div style={{ display: 'flex', gap: '15px', marginTop: '10px' }}>
-            <button type="button" onClick={onClose} style={{ flex: 1, padding: '12px', backgroundColor: 'transparent', border: '2px solid var(--texto-secundario)', color: 'var(--texto-secundario)', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer' }}>
+          <div className="form-actions">
+            <button type="button" onClick={onClose} className="btn-cancel">
               Cancelar
             </button>
-            <button type="submit" disabled={loading} style={{ flex: 2, padding: '12px', backgroundColor: 'var(--color-primario)', border: 'none', color: 'white', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', transition: 'opacity 0.3s' }}>
+            <button type="submit" disabled={loading} className="btn-submit" style={{ background: 'var(--color-primario)' }}>
               {loading ? 'Enviando...' : 'Enviar Pago a Revisión'}
             </button>
           </div>

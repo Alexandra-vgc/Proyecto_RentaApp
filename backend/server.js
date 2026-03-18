@@ -10,7 +10,7 @@ import inquilinoRoutes from './routes/inquilinoRoutes.js';
 import compradorRoutes from './routes/compradorRoutes.js';
 import solicitudesRoutes from './routes/solicitudesRoutes.js'; 
 import contratosRoutes from './routes/contratosRoutes.js';
-import authRoutes from './routes/authroutes.js'; // ✅ ESTO FALTABA: Importar las rutas de autenticación
+import authRoutes from './routes/authroutes.js'; 
 
 dotenv.config();
 
@@ -29,6 +29,7 @@ const pool = new Pool({
 
 app.use(cors());
 app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
 // Verificar conexión
 pool.query('SELECT NOW()', (err, res) => {
@@ -230,13 +231,59 @@ app.delete('/api/admin/propiedades/:id', async (req, res) => {
 });
 
 // ==========================================
+// 🔥 RUTAS DE PAGOS PARA LA ADMINISTRADORA
+// ==========================================
+app.get('/api/admin/pagos', async (req, res) => {
+    try {
+        console.log("[BACKEND] Solicitando lista de pagos para el administrador...");
+        
+        // 🛡️ CONSULTA BLINDADA 
+        const query = `
+            SELECT 
+                p.*, 
+                COALESCE(u.nombre, 'Usuario Desconocido') as nombre_cliente, 
+                pr.sector as nombre_propiedad 
+            FROM pagos p
+            LEFT JOIN contratos c ON p.contrato_id = c.id
+            LEFT JOIN usuarios u ON u.id = p.registrado_por
+            LEFT JOIN propiedades pr ON c.propiedad_id = pr.id
+            ORDER BY p.fecha_pago DESC
+        `;
+        
+        const resultado = await pool.query(query);
+        console.log(`[BACKEND] ✅ Se enviaron ${resultado.rows.length} pagos al panel.`);
+        res.json(resultado.rows);
+    } catch (error) {
+        console.error("\n❌ ERROR EXACTO AL OBTENER PAGOS (ADMIN):");
+        console.error(error.message);
+        console.error("=========================================\n");
+        res.status(500).json({ mensaje: "Error al cargar los pagos" });
+    }
+});
+
+app.put('/api/admin/pagos/:id/estado', async (req, res) => {
+    const { id } = req.params;
+    const { estado } = req.body;
+    try {
+        const resultado = await pool.query(
+            'UPDATE pagos SET estado = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2 RETURNING *',
+            [estado, id]
+        );
+        res.json({ mensaje: `Pago ${estado} con éxito`, pago: resultado.rows[0] });
+    } catch (error) {
+        console.error("Error al actualizar el estado del pago:", error);
+        res.status(500).json({ mensaje: "Error al actualizar el pago" });
+    }
+});
+
+// ==========================================
 // VINCULACIÓN DE RUTAS EXTERNAS
 // ==========================================
 app.use('/api/inquilino', inquilinoRoutes);
 app.use('/api/comprador', compradorRoutes);
 app.use('/api/solicitudes', solicitudesRoutes); 
 app.use('/api/contratos', contratosRoutes);
-app.use('/api/auth', authRoutes); // ✅ ESTO FALTABA: Conectar las rutas a la puerta /api/auth
+app.use('/api/auth', authRoutes); 
 
 app.listen(PORT, () => {
   console.log(`🚀 Servidor en http://localhost:${PORT}`);

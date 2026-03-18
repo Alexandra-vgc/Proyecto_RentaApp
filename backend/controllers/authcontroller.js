@@ -18,6 +18,7 @@ const pool = new Pool({
 export const register = async (req, res) => {
   try {
     const { nombre, email, password, rol } = req.body;
+    const userRol = rol || 'inquilino';
 
     const existe = await pool.query('SELECT * FROM usuarios WHERE email = $1', [email]);
     if (existe.rows.length > 0) {
@@ -25,15 +26,57 @@ export const register = async (req, res) => {
     }
 
     const hash = await bcrypt.hash(password, 10);
+    
+    // 1. Creamos el usuario en la tabla general
     const result = await pool.query(
       'INSERT INTO usuarios (nombre, email, password, rol) VALUES ($1, $2, $3, $4) RETURNING *',
-      [nombre, email, hash, rol || 'inquilino']
+      [nombre, email, hash, userRol]
     );
 
     const user = result.rows[0];
+    let inquilinoId = null;
+    let compradorId = null;
+
+    // 2. Si es inquilino, lo creamos respetando las columnas de la BD
+    if (userRol === 'inquilino') {
+      const inquilinoResult = await pool.query(
+        `INSERT INTO inquilinos (id, nombre, apellido, cedula, email, telefono, estado) 
+         VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`,
+        [user.id, user.nombre, '.', `TEMP-${user.id}`, email, '0900000000', 'activo']
+      );
+      inquilinoId = inquilinoResult.rows[0].id;
+
+      await pool.query(`
+        UPDATE contratos 
+        SET inquilino_id = $1 
+        WHERE nombre_cliente = $2 AND inquilino_id IS NULL
+      `, [inquilinoId, email]); 
+    }
+
+    // 3. Si es comprador, hacemos lo mismo
+    if (userRol === 'comprador') {
+      const compradorResult = await pool.query(
+        `INSERT INTO compradores (id, nombre, apellido, email, telefono) 
+         VALUES ($1, $2, $3, $4, $5) RETURNING id`,
+        [user.id, user.nombre, '.', email, '0900000000']
+      );
+      compradorId = compradorResult.rows[0].id;
+      
+      await pool.query(`
+        UPDATE contratos 
+        SET comprador_id = $1 
+        WHERE nombre_cliente = $2 AND comprador_id IS NULL
+      `, [compradorId, email]);
+    }
 
     const token = jwt.sign(
-      { id: user.id, email: user.email, rol: user.rol },
+      { 
+        id: user.id, 
+        email: user.email, 
+        rol: user.rol,
+        inquilino_id: inquilinoId,
+        comprador_id: compradorId
+      },
       process.env.JWT_SECRET,
       { expiresIn: '7d' }
     );
@@ -41,7 +84,7 @@ export const register = async (req, res) => {
     res.json({
       message: 'Registro exitoso',
       token,
-      user: { id: user.id, nombre: user.nombre, email: user.email, rol: user.rol }
+      user: { id: user.id, nombre: user.nombre, email: user.email, rol: user.rol, inquilino_id: inquilinoId, comprador_id: compradorId }
     });
   } catch (error) {
     console.error('Error en registro:', error);
@@ -68,19 +111,14 @@ export const login = async (req, res) => {
     let inquilinoId = null;
     let compradorId = null;
 
+    // ✅ CORRECCIÓN: Buscamos usando el EMAIL (porque usuario_id no existe)
     if (user.rol === 'inquilino') {
-      const inquilino = await pool.query(
-        'SELECT id FROM inquilinos WHERE usuario_id = $1',
-        [user.id]
-      );
+      const inquilino = await pool.query('SELECT id FROM inquilinos WHERE email = $1', [user.email]);
       inquilinoId = inquilino.rows[0]?.id || null;
     }
 
     if (user.rol === 'comprador') {
-      const comprador = await pool.query(
-        'SELECT id FROM compradores WHERE usuario_id = $1',
-        [user.id]
-      );
+      const comprador = await pool.query('SELECT id FROM compradores WHERE email = $1', [user.email]);
       compradorId = comprador.rows[0]?.id || null;
     }
 
@@ -99,14 +137,7 @@ export const login = async (req, res) => {
     res.json({
       message: 'Login exitoso',
       token,
-      user: { 
-        id: user.id, 
-        nombre: user.nombre, 
-        email: user.email, 
-        rol: user.rol,
-        inquilino_id: inquilinoId,
-        comprador_id: compradorId
-      }
+      user: { id: user.id, nombre: user.nombre, email: user.email, rol: user.rol, inquilino_id: inquilinoId, comprador_id: compradorId }
     });
   } catch (error) {
     console.error('Error en login:', error);
@@ -117,10 +148,7 @@ export const login = async (req, res) => {
 export const verifyToken = (req, res, next) => {
   try {
     const token = req.headers.authorization?.split(' ')[1];
-    
-    if (!token) {
-      return res.status(401).json({ message: 'Token no proporcionado' });
-    }
+    if (!token) return res.status(401).json({ message: 'Token no proporcionado' });
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     req.user = decoded;
@@ -132,25 +160,17 @@ export const verifyToken = (req, res, next) => {
 
 const codigosRecuperacion = new Map();
 
-// ✅ LA FUNCIÓN MODIFICADA EMPIEZA AQUÍ
 export const solicitarCodigo = async (req, res) => {
   try {
     const { email } = req.body;
-    
-    console.log(`🔔 [BACKEND] Solicitud de código recibida para: ${email}`);
-    
-    // Convertimos ambos correos a minúsculas en la búsqueda para evitar errores de tipeo
     const userResult = await pool.query('SELECT * FROM usuarios WHERE LOWER(email) = LOWER($1)', [email]);
     
     if (userResult.rows.length === 0) {
-      console.log(`❌ [BACKEND] El correo ${email} no se encontró en la base de datos.`);
       return res.status(400).json({ message: 'No existe una cuenta con este correo.' });
     }
 
     const codigo = Math.floor(100000 + Math.random() * 900000).toString();
     codigosRecuperacion.set(email, { codigo, expira: Date.now() + 15 * 60 * 1000 }); 
-
-    console.log(`💌 [BACKEND] Generando código ${codigo}. Intentando enviar correo...`);
 
     await sendMail({
       to: email,
@@ -164,12 +184,8 @@ export const solicitarCodigo = async (req, res) => {
         </div>
       `
     });
-
-    console.log(`✅ [BACKEND] Correo enviado exitosamente a ${email}`);
     res.json({ message: 'Código enviado exitosamente' });
-
   } catch (error) {
-    console.error('🔥 [BACKEND] Error enviando código:', error);
     res.status(500).json({ message: 'Error al enviar el correo.' });
   }
 };
@@ -196,7 +212,6 @@ export const resetPassword = async (req, res) => {
     if (!datos) return res.status(400).json({ message: 'Valida el código primero.' });
 
     const hash = await bcrypt.hash(nuevaPassword, 10);
-    // Aseguramos actualizar el correo sin importar mayúsculas
     await pool.query('UPDATE usuarios SET password = $1 WHERE LOWER(email) = LOWER($2)', [hash, email]);
     
     codigosRecuperacion.delete(email); 
