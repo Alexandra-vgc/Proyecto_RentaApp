@@ -11,7 +11,8 @@ function Register() {
     email: '',
     password: '',
     confirmPassword: '',
-    rol: 'inquilino'
+    // ✅ ROL FIJO: Todos los que se registran aquí son visitantes buscando casas
+    rol: 'visitante' 
   });
   
   const [aceptaTerminos, setAceptaTerminos] = useState(false);
@@ -59,9 +60,9 @@ function Register() {
         formData.nombre,
         formData.email,
         formData.password,
-        formData.rol
+        formData.rol // Enviamos 'visitante' por debajo de la mesa
       );
-      alert('✅ Registro exitoso!');
+      alert('✅ ¡Cuenta creada! Ahora puedes guardar tus propiedades favoritas.');
       navigate('/login');
     } catch (err) {
       setError(err.message || 'Error al registrar usuario');
@@ -84,7 +85,7 @@ function Register() {
         <div className="register-box">
           
           <h2>Crear Cuenta</h2>
-          <p className="subtitle">Completa el formulario para registrarte</p>
+          <p className="subtitle">Completa el formulario para empezar a guardar tus propiedades favoritas.</p>
 
           <form onSubmit={handleSubmit}>
             {error && (
@@ -99,7 +100,7 @@ function Register() {
                 type="text"
                 id="nombre"
                 name="nombre"
-                placeholder="Juan Pérez"
+                placeholder="Ej: Camila Machado"
                 value={formData.nombre}
                 onChange={handleChange}
                 required
@@ -107,7 +108,7 @@ function Register() {
             </div>
 
             <div className="form-group">
-              <label htmlFor="email">Email</label>
+              <label htmlFor="email">Correo Electrónico</label>
               <input
                 type="email"
                 id="email"
@@ -125,7 +126,7 @@ function Register() {
                 type="password"
                 id="password"
                 name="password"
-                placeholder="Ej: Rentapp2024!"
+                placeholder="Ej: Rentapp2026!"
                 value={formData.password}
                 onChange={handleChange}
                 required
@@ -148,19 +149,7 @@ function Register() {
               />
             </div>
 
-            <div className="form-group">
-              <label htmlFor="rol">Tipo de Usuario</label>
-              <select
-                id="rol"
-                name="rol"
-                value={formData.rol}
-                onChange={handleChange}
-              >
-                <option value="inquilino">Inquilino</option>
-                <option value="comprador">Comprador</option>
-                <option value="propietario">Propietario</option>
-              </select>
-            </div>
+            {/* ✅ EL SELECT DE TIPO DE USUARIO FUE ELIMINADO */}
 
             <div className="form-group" style={{ flexDirection: 'row', alignItems: 'center', gap: '10px', marginTop: '10px', marginBottom: '20px' }}>
               <input 
@@ -184,7 +173,7 @@ function Register() {
               className="btn-register"
               disabled={loading || !aceptaTerminos}
             >
-              {loading ? 'Registrando...' : 'Crear Cuenta'}
+              {loading ? 'Creando cuenta...' : 'Crear Cuenta'}
             </button>
 
             <div className="register-link">

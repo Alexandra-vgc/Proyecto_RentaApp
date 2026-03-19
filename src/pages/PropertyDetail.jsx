@@ -6,9 +6,9 @@ import MapaInteractiva from "../components/admin/MapaInteractiva";
 import { 
   Box, Container, Typography, Button, Grid, Paper, Stack, Divider, 
   CircularProgress, Dialog, DialogTitle, DialogContent, TextField, DialogActions,
-  List, ListItem, Chip
+  List, ListItem, Chip, IconButton
 } from "@mui/material";
-import { ArrowBack, Event, LocationOn, Info } from "@mui/icons-material";
+import { ArrowBack, Event, LocationOn, Info, Favorite, FavoriteBorder } from "@mui/icons-material";
 
 const palette = { 
   fondoPrincipal: "#E8DCCB", 
@@ -30,23 +30,51 @@ export default function PropertyDetail() {
     nombre_cliente: "", correo_cliente: "", fecha_cita: "", hora_cita: ""
   });
 
-  const currentUser = authService.getCurrentUser();
-  const isUserLogged = authService.isAuthenticated() && currentUser?.email;
+  // ✅ EXTRAEMOS EL USUARIO UNA SOLA VEZ PARA EVITAR EL LOOP INFINITO
+  const [currentUser] = useState(authService.getCurrentUser());
+  const isUserLogged = !!currentUser;
+  const [isFavorito, setIsFavorito] = useState(false);
 
   useEffect(() => {
-    const fetchProperty = async () => {
+    const fetchData = async () => {
       try {
         setLoading(true);
-        const res = await axios.get(`http://localhost:5000/api/admin/propiedades/${id}`);
-        setProperty(res.data);
+        // Cargar detalles
+        const resProp = await axios.get(`http://localhost:5000/api/admin/propiedades/${id}`);
+        setProperty(resProp.data);
+
+        // ✅ Verificar favorito solo si está logueado
+        if (isUserLogged) {
+          const resFav = await axios.get(`http://localhost:5000/api/favoritos/${currentUser.id}`);
+          const favsIds = resFav.data.map(f => f.id);
+          setIsFavorito(favsIds.includes(parseInt(id)));
+        }
       } catch (err) {
-        console.error("Error al cargar detalles:", err.message);
+        console.error("Error al cargar datos:", err.message);
       } finally {
         setLoading(false);
       }
     };
-    if (id) fetchProperty();
-  }, [id]);
+    
+    if (id) fetchData();
+  }, [id, isUserLogged, currentUser?.id]); // ✅ DEPENDENCIAS SEGURAS (YA NO PARPADEA)
+
+  const toggleFavorito = async () => {
+    if (!isUserLogged) {
+      alert("Debes iniciar sesión o registrarte para guardar favoritos.");
+      navigate('/login');
+      return;
+    }
+    try {
+      const res = await axios.post("http://localhost:5000/api/favoritos", {
+        usuario_id: currentUser.id,
+        propiedad_id: id
+      });
+      setIsFavorito(res.data.guardado);
+    } catch (error) {
+      console.error("Error al guardar favorito");
+    }
+  };
 
   const allImages = property ? [property.imagen_url, ...(property.imagenes_extra || [])].filter(img => img) : [];
 
@@ -82,13 +110,11 @@ export default function PropertyDetail() {
         </Button>
 
         <Grid container spacing={3}>
-          {/* COLUMNA IZQUIERDA: IMAGEN Y CARRUSEL JUSTO DEBAJO */}
           <Grid item xs={12} md={7}>
             <Paper elevation={0} sx={{ borderRadius: 2, overflow: 'hidden', mb: 2, border: '1px solid #ddd' }}>
               <img src={allImages[activeImg]} style={{ width: '100%', height: '480px', objectFit: 'cover' }} alt="principal" />
             </Paper>
 
-            {/* CARRUSEL DE MINIATURAS (REUBICADO AQUÍ) */}
             <Stack direction="row" spacing={1} sx={{ overflowX: 'auto', pb: 2, mb: 3 }}>
               {allImages.map((img, i) => (
                 <Box key={i} component="img" src={img} onClick={() => setActiveImg(i)} 
@@ -100,7 +126,6 @@ export default function PropertyDetail() {
               ))}
             </Stack>
 
-            {/* CARD DE DESCRIPCIÓN Y REGLAS */}
             <Paper elevation={0} sx={{ p: 3, borderRadius: 2, border: '1px solid #eee', bgcolor: 'white' }}>
               <Typography variant="h5" sx={{ fontWeight: 900, color: '#2c3e50', mb: 2 }}>
                 {property.sector || "Lujoso Departamento"}, En Renta
@@ -121,11 +146,23 @@ export default function PropertyDetail() {
             </Paper>
           </Grid>
 
-          {/* COLUMNA DERECHA: INFO PRINCIPAL, DETALLES Y BOTÓN */}
           <Grid item xs={12} md={5}>
-            {/* CARD DE PRECIO Y TITULO */}
-            <Paper elevation={0} sx={{ p: 4, bgcolor: 'white', borderRadius: 2, mb: 3, border: '1px solid #eee' }}>
-              <Typography variant="h5" sx={{ fontWeight: 900, mb: 1 }}>
+            <Paper elevation={0} sx={{ p: 4, bgcolor: 'white', borderRadius: 2, mb: 3, border: '1px solid #eee', position: 'relative' }}>
+              
+              {/* ✅ BOTÓN DE FAVORITO ARREGLADO */}
+              <IconButton 
+                onClick={toggleFavorito}
+                sx={{ 
+                  position: 'absolute', top: 15, right: 15, 
+                  bgcolor: '#f5f5f5', 
+                  '&:hover': { bgcolor: '#e0e0e0', transform: 'scale(1.1)' },
+                  transition: 'all 0.2s'
+                }}
+              >
+                {isFavorito ? <Favorite sx={{ color: '#d32f2f' }} /> : <FavoriteBorder sx={{ color: 'gray' }} />}
+              </IconButton>
+
+              <Typography variant="h5" sx={{ fontWeight: 900, mb: 1, pr: 5 }}>
                 {property.tipo_propiedad || "departamento"} de {property.habitaciones} hab. de {property.metros_cuadrados}m² en {property.ciudad}
               </Typography>
               <Typography variant="h3" sx={{ fontWeight: 900, color: palette.botonPrincipal }}>
@@ -140,7 +177,6 @@ export default function PropertyDetail() {
               </Typography>
             </Paper>
 
-            {/* CARD DE DETALLES TÉCNICOS */}
             <Paper elevation={0} sx={{ bgcolor: 'white', p: 1, borderRadius: 2, border: '1px solid #eee' }}>
               <List disablePadding>
                 {[
@@ -161,15 +197,15 @@ export default function PropertyDetail() {
               </List>
             </Paper>
 
-            <Box sx={{ mt: 3, mb: 1 }}>
+<<<<<<< HEAD
+            {/* --- SECCIÓN DEL MAPA (Tu parte) --- */}
+<Box sx={{ mt: 3, mb: 1 }}>
   <Typography variant="subtitle1" sx={{ fontWeight: 800, color: palette.titulos, mb: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
     <LocationOn fontSize="small" /> Ubicación del inmueble
   </Typography>
-  
+
   <Paper elevation={0} sx={{ borderRadius: 2, overflow: 'hidden', border: '1px solid #eee' }}>
-    {/* Verificamos que existan coordenadas válidas antes de mostrar el mapa */}
-    {property.latitud !== null && property.latitud !== undefined && property.latitud !== "" &&
-     property.longitud !== null && property.longitud !== undefined && property.longitud !== "" ? (
+    {property.latitud && property.longitud ? (
       <MapaInteractiva 
         lat={Number(property.latitud)} 
         lng={Number(property.longitud)} 
@@ -185,13 +221,22 @@ export default function PropertyDetail() {
   </Paper>
 </Box>
 
-
-            {/* BOTÓN DE AGENDAR */}
+{/* --- BOTÓN DE AGENDAR (Parte de Vane) --- */}
+<Grid item xs={12}>
+  <Button 
+    variant="contained" 
+    fullWidth 
+    startIcon={<Event />} 
+    onClick={handleOpenCita}
+    sx={{ bgcolor: palette.botonPrincipal, mt: 3, py: 2, fontWeight: 'bold', borderRadius: 2 }}
+  >
+    Agendar visita
+  </Button>
+</Grid>            {/* BOTÓN DE AGENDAR */}
+=======
+>>>>>>> origin/vane-rama
             <Button 
-              variant="contained" 
-              fullWidth
-              startIcon={<Event />} 
-              onClick={handleOpenCita}
+              variant="contained" fullWidth startIcon={<Event />} onClick={handleOpenCita}
               sx={{ bgcolor: palette.botonPrincipal, mt: 3, py: 2, fontWeight: 'bold', borderRadius: 2, textTransform: 'none' }}
             >
               Agendar visita
@@ -200,7 +245,6 @@ export default function PropertyDetail() {
         </Grid>
       </Container>
 
-      {/* MODAL DE CITA (SIN CAMBIOS) */}
       <Dialog open={openModal} onClose={() => setOpenModal(false)} fullWidth maxWidth="xs">
         <DialogTitle sx={{ fontWeight: 800, textAlign: 'center' }}>Confirmar Visita</DialogTitle>
         <DialogContent>

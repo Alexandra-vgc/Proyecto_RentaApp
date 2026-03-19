@@ -7,7 +7,19 @@ import MiContrato from './MiContrato';
 import MisPagos from './MisPagos';
 import MiPerfil from './MiPerfil';
 import RegistrarPago from './RegistrarPago';
+import Mantenimiento from './Mantenimiento'; 
 import './InquilinoDashboard.css';
+
+// ✅ ICONOS DE MATERIAL UI AGREGADOS
+import DashboardIcon from '@mui/icons-material/Dashboard';
+import ApartmentIcon from '@mui/icons-material/Apartment';
+import DescriptionIcon from '@mui/icons-material/Description';
+import BuildIcon from '@mui/icons-material/Build';
+import PaymentsIcon from '@mui/icons-material/Payments';
+import SettingsIcon from '@mui/icons-material/Settings';
+import AttachMoneyIcon from '@mui/icons-material/AttachMoney';
+import AccessTimeIcon from '@mui/icons-material/AccessTime';
+import WarningAmberIcon from '@mui/icons-material/WarningAmber';
 
 function InquilinoDashboard() {
   const navigate = useNavigate();
@@ -63,109 +75,112 @@ function InquilinoDashboard() {
   };
   const tieneContrato = !!dashboardData?.contrato;
 
-  // Obtenemos el primer nombre para los saludos
   const primerNombre = user?.nombre?.split(' ')[0] || 'Usuario';
+  const fontGlobal = "'Inter', 'Segoe UI', 'Roboto', sans-serif";
 
   return (
-    <div className="inquilino-dashboard">
-      {/* NAVBAR */}
+    <div className="inquilino-dashboard" style={{ fontFamily: fontGlobal }}>
+      {/* NAVBAR ORIGINAL */}
       <nav className="dashboard-nav">
         <div className="nav-brand">
-          <h2 onClick={() => navigate('/')} style={{ cursor: 'pointer' }} title="Volver al inicio">
-            🏠 MiRentaApp
+          <h2 onClick={() => navigate('/')} style={{ cursor: 'pointer', fontFamily: fontGlobal, fontWeight: 800 }} title="Volver al inicio">
+            RentaApp
           </h2>
         </div>
         <div className="nav-user">
-          <button onClick={handleLogout} className="btn-logout">Cerrar Sesión</button>
+          <button onClick={handleLogout} className="btn-logout" style={{ fontFamily: fontGlobal }}>Cerrar Sesión</button>
         </div>
       </nav>
 
-      {/* LAYOUT */}
+      {/* LAYOUT ORIGINAL */}
       <div className="dashboard-layout">
         
-        {/* SIDEBAR */}
+        {/* SIDEBAR ORIGINAL CON ICONOS MUI */}
         <aside className="sidebar">
-          
           <div className="sidebar-profile">
             <div className="profile-avatar">
               {primerNombre.charAt(0).toUpperCase()}
             </div>
-            <h3 className="profile-name">{primerNombre}</h3>
-            <p className="profile-role">{esComprador ? 'Compradora' : 'Inquilina'}</p>
+            <h3 className="profile-name" style={{ fontFamily: fontGlobal, fontWeight: 700 }}>{primerNombre}</h3>
+            <p className="profile-role" style={{ fontFamily: fontGlobal }}>{esComprador ? 'Compradora' : 'Inquilina'}</p>
           </div>
 
           <button className={`sidebar-item ${activeTab === 'inicio' ? 'active' : ''}`} onClick={() => setActiveTab('inicio')}>
-            <span className="icon">📊</span> Panel Principal
+            <DashboardIcon className="icon" /> Panel Principal
           </button>
           <button className={`sidebar-item ${activeTab === 'departamento' ? 'active' : ''}`} onClick={() => setActiveTab('departamento')}>
-            <span className="icon">🏢</span> Mi Propiedad
+            <ApartmentIcon className="icon" /> Mi Propiedad
           </button>
           <button className={`sidebar-item ${activeTab === 'contrato' ? 'active' : ''}`} onClick={() => setActiveTab('contrato')}>
-            <span className="icon">📄</span> Gestión Contrato
+            <DescriptionIcon className="icon" /> Gestión Contrato
           </button>
+          
+          <button className={`sidebar-item ${activeTab === 'mantenimiento' ? 'active' : ''}`} onClick={() => setActiveTab('mantenimiento')}>
+            <BuildIcon className="icon" /> Mantenimiento
+          </button>
+
           <button className={`sidebar-item ${activeTab === 'pagos' ? 'active' : ''}`} onClick={() => setActiveTab('pagos')}>
-            <span className="icon">💳</span> Historial de Pagos
+            <PaymentsIcon className="icon" /> Historial de Pagos
             {stats.cuotasPendientes > 0 && <span className="badge-count" style={{marginLeft: 'auto', background: '#C66A3D', color: '#fff', padding: '2px 8px', borderRadius: '12px', fontSize: '0.8rem'}}>{stats.cuotasPendientes}</span>}
           </button>
           <button className={`sidebar-item ${activeTab === 'perfil' ? 'active' : ''}`} onClick={() => setActiveTab('perfil')}>
-            <span className="icon">⚙️</span> Configuración
+            <SettingsIcon className="icon" /> Configuración
           </button>
         </aside>
 
-        {/* MAIN CONTENT */}
+        {/* MAIN CONTENT ORIGINAL */}
         <main className="dashboard-content">
           {activeTab === 'inicio' && (
             <div className="inicio-tab-animado">
               
-              <div className="welcome-banner">
-                <h1>¡Bienvenida, {primerNombre}! 👋</h1>
-                <p>Aquí tienes la visión general de tu estado y propiedades asignadas.</p>
+              <div className="welcome-banner" style={{ marginBottom: '30px' }}>
+                <h1 style={{ fontFamily: fontGlobal, fontSize: '2.2rem', color: '#4E5B3C', margin: '0 0 10px 0', fontWeight: 800 }}>¡Bienvenida, {primerNombre}! </h1>
+                <p style={{ fontFamily: fontGlobal, fontSize: '1.1rem', color: '#666', margin: 0 }}>Aquí tienes la visión general de tu estado y propiedades asignadas.</p>
               </div>
 
               {!tieneContrato ? (
-                /* ESTADO VACÍO */
                 <div className="empty-state-container" style={{textAlign: 'center', padding: '50px', backgroundColor: '#F5EFE6', borderRadius: '12px', border: '1px dashed #BFA58A'}}>
                   <div className="empty-state-icon" style={{fontSize: '4rem', marginBottom: '20px'}}>🏡</div>
-                  <h2 style={{color: '#4A3F35'}}>Aún no tienes un inmueble asignado</h2>
-                  <p style={{color: '#BFA58A', marginBottom: '30px'}}>Comunícate con la administración o explora el catálogo para aplicar a una propiedad.</p>
-                  <button className="btn-explorar" onClick={() => navigate('/')}>Ver Catálogo</button>
+                  <h2 style={{color: '#4A3F35', fontFamily: fontGlobal, fontWeight: 'bold'}}>Aún no tienes un inmueble asignado</h2>
+                  <p style={{color: '#BFA58A', marginBottom: '30px', fontFamily: fontGlobal}}>Comunícate con la administración o explora el catálogo para aplicar a una propiedad.</p>
+                  <button className="btn-explorar" onClick={() => navigate('/')} style={{ fontFamily: fontGlobal }}>Ver Catálogo</button>
                 </div>
               ) : (
-                /* ESTADÍSTICAS */
                 <>
+                  {/* TARJETAS CON ICONOS MODERNOS */}
                   <div className="stats-grid">
                     <div className="stat-card modern-card">
-                      <div className="stat-icon-wrapper">🏢</div>
+                      <div className="stat-icon-wrapper" style={{color: '#4E5B3C', backgroundColor: '#F5EFE6'}}><ApartmentIcon fontSize="large" /></div>
                       <div className="stat-info">
-                        <span className="stat-label">Inmueble Actual</span>
-                        <h4 className="stat-value">{dashboardData?.contrato?.codigo || '---'}</h4>
+                        <span className="stat-label" style={{ fontFamily: fontGlobal }}>Inmueble Actual</span>
+                        <h4 className="stat-value" style={{ fontFamily: fontGlobal, fontWeight: 800 }}>{dashboardData?.contrato?.codigo || '---'}</h4>
                       </div>
                     </div>
 
                     <div className="stat-card modern-card">
-                      <div className="stat-icon-wrapper">💵</div>
+                      <div className="stat-icon-wrapper" style={{color: '#2e7d32', backgroundColor: '#e8f5e9'}}><AttachMoneyIcon fontSize="large" /></div>
                       <div className="stat-info">
-                        <span className="stat-label">{labelPago}</span>
-                        <h4 className="stat-value">${dashboardData?.contrato?.monto_mensual || '0.00'}</h4>
+                        <span className="stat-label" style={{ fontFamily: fontGlobal }}>{labelPago}</span>
+                        <h4 className="stat-value" style={{ fontFamily: fontGlobal, fontWeight: 800 }}>${dashboardData?.contrato?.monto_mensual || '0.00'}</h4>
                       </div>
                     </div>
 
                     <div className="stat-card modern-card">
-                      <div className="stat-icon-wrapper">⏰</div>
+                      <div className="stat-icon-wrapper" style={{color: stats.cuotasPendientes > 0 ? '#d32f2f' : '#1976d2', backgroundColor: stats.cuotasPendientes > 0 ? '#ffebee' : '#e3f2fd'}}><AccessTimeIcon fontSize="large" /></div>
                       <div className="stat-info">
-                        <span className="stat-label">{labelPendientes}</span>
-                        <h4 className="stat-value">{stats.cuotasPendientes || 0}</h4>
+                        <span className="stat-label" style={{ fontFamily: fontGlobal }}>{labelPendientes}</span>
+                        <h4 className="stat-value" style={{ fontFamily: fontGlobal, fontWeight: 800 }}>{stats.cuotasPendientes || 0}</h4>
                       </div>
                     </div>
                   </div>
 
                   {esComprador && (
                     <div className="progress-section">
-                      <h3>Gráfico de Progreso de Compra</h3>
+                      <h3 style={{ fontFamily: fontGlobal, fontWeight: 'bold' }}>Gráfico de Progreso de Compra</h3>
                       <div className="progress-bar-bg">
                         <div className="progress-bar-fill" style={{ width: `${stats.porcentajeProgreso}%` }}></div>
                       </div>
-                      <div className="progress-details">
+                      <div className="progress-details" style={{ fontFamily: fontGlobal }}>
                         <span>Capital Abonado: <strong>${stats.totalAbonado?.toFixed(2)}</strong></span>
                         <span>Saldo Restante: <strong>${stats.saldoPendiente?.toFixed(2)}</strong></span>
                         <span style={{color: '#C66A3D', fontWeight: 'bold'}}>{stats.porcentajeProgreso}% Completado</span>
@@ -173,29 +188,34 @@ function InquilinoDashboard() {
                     </div>
                   )}
 
-                  {/* 🔥 LÓGICA CORREGIDA PARA LAS ALERTAS DE PAGO */}
-                  {dashboardData?.proximoPago && (
+                  {/* LÓGICA DE ALERTAS */}
+                  {dashboardData?.proximoPago ? (
                     dashboardData.proximoPago.estado === 'pendiente' ? (
-                      /* MENSAJE CUANDO YA PAGÓ Y ESTÁ EN REVISIÓN */
-                      <div className="alert-section" style={{ backgroundColor: '#fff8e1', border: '1px solid #ffcc80', borderLeft: '5px solid #ffb300', padding: '20px', borderRadius: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <div className="alert-section" style={{ backgroundColor: '#fffde7', border: '1px solid #fff59d', borderLeft: '6px solid #fbc02d' }}>
                         <div className="alert-content">
-                          <h3 style={{margin: '0 0 5px 0', color: '#f57c00'}}> Pago en Revisión</h3>
-                          <p style={{margin: 0, color: '#4A3F35'}}>
-                            Tu pago por <strong>${dashboardData.proximoPago.monto}</strong> correspondiente a <strong>{dashboardData.proximoPago.mes}</strong> está siendo revisado por la administración.
-                          </p>
+                          <h3 style={{margin: '0 0 5px 0', color: '#f57f17', fontFamily: fontGlobal, fontWeight: 'bold'}}>⏳ Pago en Revisión</h3>
+                          <p style={{margin: 0, color: '#555', fontFamily: fontGlobal}}>Tu pago por <strong>${dashboardData.proximoPago.monto}</strong> correspondiente a <strong>{dashboardData.proximoPago.mes}</strong> está siendo revisado.</p>
                         </div>
-                        <div style={{ fontSize: '2.5rem', opacity: 0.8 }}> </div>
                       </div>
                     ) : (
-                      /* MENSAJE ROJO CUANDO DEBE PAGAR (Atrasado, etc.) */
-                      <div className="alert-section">
-                        <div className="alert-content">
-                          <h3 style={{margin: '0 0 5px 0', color: '#D9534F'}}>⚠️ Próximo Vencimiento</h3>
-                          <p style={{margin: 0, color: '#4A3F35'}}>Tienes una cuota pendiente de <strong>${dashboardData.proximoPago.monto}</strong> correspondiente a <strong>{dashboardData.proximoPago.mes}</strong>.</p>
+                      <div className="alert-section" style={{ backgroundColor: '#ffebee', border: '1px solid #ffcdd2', borderLeft: '6px solid #d32f2f' }}>
+                        <div className="alert-content" style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+                          <WarningAmberIcon style={{ color: '#c62828', fontSize: '2.5rem' }} />
+                          <div>
+                            <h3 style={{margin: '0 0 5px 0', color: '#c62828', fontFamily: fontGlobal, fontWeight: 'bold'}}>Próximo Vencimiento</h3>
+                            <p style={{margin: 0, color: '#555', fontFamily: fontGlobal}}>Tienes una cuota pendiente de <strong>${dashboardData.proximoPago.monto}</strong> correspondiente a <strong>{dashboardData.proximoPago.mes}</strong>.</p>
+                          </div>
                         </div>
                         <button className="btn-pay-now" onClick={() => setShowRegistrarPago(true)}>Pagar Ahora</button>
                       </div>
                     )
+                  ) : (
+                    <div className="alert-section" style={{ backgroundColor: '#e8f5e9', border: '1px solid #c8e6c9', borderLeft: '6px solid #2e7d32' }}>
+                        <div className="alert-content">
+                          <h3 style={{margin: '0 0 5px 0', color: '#2e7d32', fontFamily: fontGlobal, fontWeight: 'bold'}}>✅ ¡Estás al día!</h3>
+                          <p style={{margin: 0, color: '#555', fontFamily: fontGlobal}}>No tienes pagos pendientes en este momento. Gracias por tu puntualidad.</p>
+                        </div>
+                    </div>
                   )}
                 </>
               )}
@@ -204,12 +224,12 @@ function InquilinoDashboard() {
 
           {activeTab === 'departamento' && <MiDepartamento />}
           {activeTab === 'contrato' && <MiContrato />}
+          {activeTab === 'mantenimiento' && <Mantenimiento />}
           {activeTab === 'pagos' && <MisPagos onRecargar={cargarDashboard} />}
           {activeTab === 'perfil' && <MiPerfil />}
         </main>
       </div>
       
-      {/* Botón flotante */}
       {tieneContrato && (
         <button className="btn-fab" onClick={() => setShowRegistrarPago(true)} title={`Registrar ${esComprador ? 'Cuota' : 'Pago'}`}>
           💰

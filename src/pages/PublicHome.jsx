@@ -1,7 +1,9 @@
 import { useState, useEffect } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom"; 
-import jsPDF from "jspdf"; // ✅ Necesario para el PDF
+import jsPDF from "jspdf";
+import authService from "../services/authService"; // ✅ AÑADIDO PARA SABER SI ESTÁ LOGUEADO
+
 import {
   Box, Card, CardContent, CardMedia, Typography, Button, Select, 
   MenuItem, Chip, Container, InputBase, Paper, IconButton, 
@@ -10,10 +12,10 @@ import {
 import { 
   Search as SearchIcon, LocationOn, Bed, Bathtub, DeleteOutline,
   Facebook, Instagram, WhatsApp, VerifiedUser, Security, 
-  Assignment, Email, Phone, HelpOutline, PictureAsPdf // ✅ Nuevo icono
+  Assignment, Email, Phone, HelpOutline, PictureAsPdf,
+  Favorite, FavoriteBorder // ✅ AÑADIDOS LOS CORAZONES
 } from "@mui/icons-material";
 
-// --- TU PALETA DE COLORES ---
 const palette = {
   fondoPrincipal: "#E8DCCB",    
   fondoAlterno: "#F5EFE6",      
@@ -24,7 +26,6 @@ const palette = {
   detallesDorado: "#C9A227"      
 };
 
-// --- COMPONENTE FOOTER ---
 const Footer = () => (
   <Box component="footer" sx={{ bgcolor: "white", pt: 10, pb: 6, mt: 10, borderTop: `2px solid ${palette.detallesDorado}` }}>
     <Container maxWidth="lg">
@@ -99,7 +100,13 @@ export default function PublicHome() {
   const [banos, setBanos] = useState("");
   const [error, setError] = useState(null);
 
+  // ✅ NUEVOS ESTADOS PARA FAVORITOS
+  const [favoritos, setFavoritos] = useState([]);
+  const currentUser = authService.getCurrentUser();
+  const isLogged = authService.isAuthenticated() && currentUser;
+
   useEffect(() => {
+    // Cargar propiedades
     axios.get("http://localhost:5000/api/admin/propiedades")
       .then(res => {
         setProperties(res.data);
@@ -108,14 +115,43 @@ export default function PublicHome() {
       .catch(err => {
         setError("No hay conexión con el servidor. Intenta más tarde.");
       });
-  }, []);
 
-  // ✅ NUEVA FUNCIÓN: GENERAR FICHA TÉCNICA PDF
+    // ✅ Cargar favoritos si el usuario está logueado
+    if (isLogged) {
+      axios.get(`http://localhost:5000/api/favoritos/${currentUser.id}`)
+        .then(res => {
+          setFavoritos(res.data.map(fav => fav.id)); // Guardamos solo los IDs para comparar fácil
+        })
+        .catch(err => console.error("Error al cargar favoritos", err));
+    }
+  }, [isLogged, currentUser]);
+
+  // ✅ NUEVA FUNCIÓN: AGREGAR/QUITAR DE FAVORITOS
+  const toggleFavorito = async (propiedad_id) => {
+    if (!isLogged) {
+      alert("Debes iniciar sesión o registrarte para guardar propiedades.");
+      navigate('/login');
+      return;
+    }
+    try {
+      const res = await axios.post("http://localhost:5000/api/favoritos", {
+        usuario_id: currentUser.id,
+        propiedad_id: propiedad_id
+      });
+      if (res.data.guardado) {
+        setFavoritos([...favoritos, propiedad_id]);
+      } else {
+        setFavoritos(favoritos.filter(id => id !== propiedad_id));
+      }
+    } catch (error) {
+      console.error("Error al guardar favorito");
+    }
+  };
+
   const generarFichaPDF = (p) => {
     const doc = new jsPDF();
     const pageWidth = doc.internal.pageSize.getWidth();
 
-    // Encabezado Verde
     doc.setFillColor(78, 91, 60); 
     doc.rect(0, 0, pageWidth, 40, 'F');
     doc.setTextColor(255, 255, 255);
@@ -125,7 +161,6 @@ export default function PublicHome() {
     doc.setFontSize(10);
     doc.text("FICHA TÉCNICA DE PROPIEDAD", pageWidth - 70, 25);
 
-    // Título y Precio
     doc.setTextColor(78, 91, 60);
     doc.setFontSize(20);
     doc.text(p.sector || "Departamento", 20, 55);
@@ -133,12 +168,10 @@ export default function PublicHome() {
     doc.setFontSize(24);
     doc.text(`$${p.precio_mensual}`, pageWidth - 50, 55);
 
-    // Línea Dorada
     doc.setDrawColor(201, 162, 39);
     doc.setLineWidth(1);
     doc.line(20, 60, pageWidth - 20, 60);
 
-    // Detalles
     doc.setTextColor(60, 60, 60);
     doc.setFontSize(12);
     doc.setFont("helvetica", "bold");
@@ -154,7 +187,6 @@ export default function PublicHome() {
     ];
     doc.text(detalles, 25, 85);
 
-    // Descripción
     doc.setFont("helvetica", "bold");
     doc.text("DESCRIPCIÓN:", 20, 140);
     doc.setFont("helvetica", "italic");
@@ -236,10 +268,31 @@ export default function PublicHome() {
         <Stack spacing={4}>
           {filtered.map((p) => (
             <Card key={p.id} sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, borderRadius: 2, border: `1px solid ${palette.textoSecundario}33`, boxShadow: "none", overflow: 'hidden' }}>
+              
               <Box sx={{ position: 'relative', width: { md: 400 } }}>
                 <CardMedia component="img" sx={{ height: '100%', minHeight: 250 }} image={p.imagen_url || "https://via.placeholder.com/400?text=Sin+imagen"} />
                 <Chip label="Verificado" size="small" icon={<VerifiedUser sx={{ fontSize: '14px !important', color: 'white !important' }}/>} sx={{ position: 'absolute', top: 15, left: 15, bgcolor: palette.titulos, color: 'white', borderRadius: 1 }} />
+                
+                {/* ✅ EL BOTÓN DEL CORAZÓN (FAVORITOS) */}
+                <IconButton 
+                  onClick={() => toggleFavorito(p.id)}
+                  sx={{ 
+                    position: 'absolute', top: 10, right: 10, 
+                    bgcolor: 'rgba(255,255,255,0.9)', 
+                    '&:hover': { bgcolor: 'white', transform: 'scale(1.1)' },
+                    transition: 'all 0.2s',
+                    boxShadow: '0 2px 5px rgba(0,0,0,0.2)'
+                  }}
+                >
+                  {favoritos.includes(p.id) ? (
+                    <Favorite sx={{ color: '#d32f2f' }} />
+                  ) : (
+                    <FavoriteBorder sx={{ color: 'gray' }} />
+                  )}
+                </IconButton>
+
               </Box>
+
               <CardContent sx={{ p: 4, flex: 1 }}>
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
                   <Box>
@@ -289,7 +342,6 @@ export default function PublicHome() {
                 <Stack direction="row" spacing={2} justifyContent="flex-end">
                   <Button variant="outlined" sx={{ borderRadius: 1, borderColor: palette.titulos, color: palette.titulos, px: 4, fontWeight: 700, textTransform: 'none' }} onClick={() => navigate(`/propiedad/${p.id}`)}>Detalles</Button>
                   
-                  {/* ✅ BOTÓN ACTUALIZADO: AHORA DESCARGA EL PDF */}
                   <Button 
                     variant="contained" 
                     startIcon={<PictureAsPdf />}
