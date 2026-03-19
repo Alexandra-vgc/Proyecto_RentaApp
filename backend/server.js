@@ -46,7 +46,7 @@ pool.query('SELECT NOW()', (err, res) => {
 });
 
 // ==========================================
-// RUTAS AUTH (Las que ya tenías hardcodeadas)
+// RUTAS AUTH
 // ==========================================
 app.post('/api/auth/login', async (req, res) => {
   try {
@@ -89,8 +89,9 @@ app.post('/api/auth/register', async (req, res) => {
     
     const hash = await bcrypt.hash(password, 10);
     
-    const rolesPermitidos = ['propietario', 'comprador', 'inquilino'];
-    const rolSeguro = rolesPermitidos.includes(rol) ? rol : 'inquilino';
+    // ✅ AHORA ACEPTAMOS EL ROL 'visitante'
+    const rolesPermitidos = ['propietario', 'comprador', 'inquilino', 'visitante'];
+    const rolSeguro = rolesPermitidos.includes(rol) ? rol : 'visitante';
 
     const result = await pool.query(
       'INSERT INTO usuarios (nombre, email, password, rol) VALUES ($1, $2, $3, $4) RETURNING *', 
@@ -274,6 +275,80 @@ app.put('/api/admin/pagos/:id/estado', async (req, res) => {
         console.error("Error al actualizar el estado del pago:", error);
         res.status(500).json({ mensaje: "Error al actualizar el pago" });
     }
+});
+
+// ==========================================
+// 🛠️ RUTAS DE MANTENIMIENTO PARA LA ADMINISTRADORA
+// ==========================================
+app.get('/api/admin/mantenimientos', async (req, res) => {
+    try {
+        const query = `
+            SELECT m.*, 
+                   COALESCE(i.nombre, 'Inquilino') || ' ' || COALESCE(i.apellido, '') as nombre_inquilino, 
+                   p.sector as nombre_propiedad 
+            FROM mantenimientos m
+            JOIN inquilinos i ON m.inquilino_id = i.id
+            JOIN propiedades p ON m.propiedad_id = p.id
+            ORDER BY m.fecha_reporte DESC
+        `;
+        const resultado = await pool.query(query);
+        res.json(resultado.rows);
+    } catch (error) {
+        console.error("\n❌ ERROR AL OBTENER MANTENIMIENTOS (ADMIN):", error.message);
+        res.status(500).json({ mensaje: "Error al cargar los mantenimientos" });
+    }
+});
+
+app.put('/api/admin/mantenimientos/:id/estado', async (req, res) => {
+    const { id } = req.params;
+    const { estado } = req.body;
+    try {
+        let query = 'UPDATE mantenimientos SET estado = $1 WHERE id = $2 RETURNING *';
+        if (estado === 'Solucionado') {
+            query = 'UPDATE mantenimientos SET estado = $1, fecha_solucion = CURRENT_TIMESTAMP WHERE id = $2 RETURNING *';
+        }
+        
+        const resultado = await pool.query(query, [estado, id]);
+        res.json({ mensaje: `Mantenimiento marcado como ${estado}`, mantenimiento: resultado.rows[0] });
+    } catch (error) {
+        console.error("❌ Error al actualizar mantenimiento:", error.message);
+        res.status(500).json({ mensaje: "Error al actualizar el estado" });
+    }
+});
+
+// ==========================================
+// ❤️ RUTAS DE FAVORITOS (PINTEREST DE INMUEBLES)
+// ==========================================
+app.post('/api/favoritos', async (req, res) => {
+  const { usuario_id, propiedad_id } = req.body;
+  try {
+    const existe = await pool.query('SELECT id FROM favoritos WHERE usuario_id = $1 AND propiedad_id = $2', [usuario_id, propiedad_id]);
+    
+    if (existe.rows.length > 0) {
+      await pool.query('DELETE FROM favoritos WHERE id = $1', [existe.rows[0].id]);
+      return res.json({ message: 'Propiedad quitada de favoritos', guardado: false });
+    }
+
+    await pool.query('INSERT INTO favoritos (usuario_id, propiedad_id) VALUES ($1, $2)', [usuario_id, propiedad_id]);
+    res.json({ message: 'Propiedad guardada en favoritos', guardado: true });
+  } catch (error) {
+    console.error("❌ Error en favoritos:", error.message);
+    res.status(500).json({ error: "Error al gestionar favoritos" });
+  }
+});
+
+app.get('/api/favoritos/:usuario_id', async (req, res) => {
+  try {
+    const query = `
+      SELECT p.* FROM propiedades p
+      JOIN favoritos f ON p.id = f.propiedad_id
+      WHERE f.usuario_id = $1
+    `;
+    const result = await pool.query(query, [req.params.usuario_id]);
+    res.json(result.rows);
+  } catch (error) {
+    res.status(500).json({ error: "Error al cargar favoritos" });
+  }
 });
 
 // ==========================================

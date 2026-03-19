@@ -178,13 +178,12 @@ router.get('/mis-pagos', verifyToken, async (req, res) => {
   }
 });
 
-// ✅ RUTA DE PAGOS CORREGIDA (Usa 'comprobante' para que no explote la BD)
+// ✅ RUTA DE PAGOS CORREGIDA
 router.post('/pagos', verifyToken, async (req, res) => { 
   try {
     const inquilinoId = await obtenerInquilinoReal(req);
     if (!inquilinoId) return res.status(400).json({ message: 'Aún no tienes contrato' });
 
-    // 🔥 Extraemos comprobante_url de lo que nos manda el Frontend
     const { mes, monto, metodo, comprobante_url } = req.body; 
     const contrato = await pool.query(`SELECT id FROM contratos WHERE inquilino_id = $1 AND estado = 'activo' LIMIT 1`, [inquilinoId]);
 
@@ -193,7 +192,6 @@ router.post('/pagos', verifyToken, async (req, res) => {
 
     console.log(`[BACKEND] Intentando guardar pago de $${monto} para el mes de ${mes}...`);
 
-    // 🔥 Lo guardamos en la columna 'comprobante' que creó tu compañera
     const result = await pool.query(`
       INSERT INTO pagos (contrato_id, mes, monto, fecha_pago, fecha_vencimiento, metodo_pago, estado, registrado_por, comprobante) 
       VALUES ($1, $2, $3, CURRENT_DATE, CURRENT_DATE + INTERVAL '5 days', $4, 'pendiente', $5, $6) RETURNING *
@@ -209,6 +207,9 @@ router.post('/pagos', verifyToken, async (req, res) => {
   }
 });
 
+// ==========================================
+// 🔥 PERFIL (Obtener y Guardar Datos)
+// ==========================================
 router.get('/mi-perfil', verifyToken, async (req, res) => {
   try {
     const inquilinoId = await obtenerInquilinoReal(req);
@@ -220,21 +221,29 @@ router.get('/mi-perfil', verifyToken, async (req, res) => {
   }
 });
 
+// ✅ CORRECCIÓN CLAVE: Agregamos cédula y quitamos fecha_nacimiento
 router.put('/mi-perfil', verifyToken, async (req, res) => {
   try {
     const inquilinoId = await obtenerInquilinoReal(req);
     if (!inquilinoId) return res.status(400).json({ message: 'Usuario no asociado' });
-    const { nombre, apellido, telefono, fecha_nacimiento, ocupacion } = req.body;
+    
+    // Recibimos la cédula desde el frontend en lugar de fecha_nacimiento
+    const { nombre, apellido, cedula, telefono, ocupacion } = req.body;
+    
     const result = await pool.query(
-      `UPDATE inquilinos SET nombre = $1, apellido = $2, telefono = $3, 
-        fecha_nacimiento = $4, ocupacion = $5, updated_at = CURRENT_TIMESTAMP 
+      `UPDATE inquilinos 
+       SET nombre = $1, apellido = $2, cedula = $3, telefono = $4, ocupacion = $5, updated_at = CURRENT_TIMESTAMP 
        WHERE id = $6 RETURNING *`,
-      [nombre, apellido, telefono, fecha_nacimiento, ocupacion, inquilinoId]
+      [nombre, apellido, cedula, telefono, ocupacion, inquilinoId]
     );
+    
     res.json({ message: 'Perfil actualizado', perfil: result.rows[0] });
   } catch (error) {
+    console.error("❌ Error al actualizar perfil:", error.message);
     res.status(500).json({ message: 'Error al actualizar perfil' });
   }
 });
+
+
 
 export default router;
