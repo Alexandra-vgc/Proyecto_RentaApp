@@ -16,27 +16,56 @@ const pool = new Pool({
   database: process.env.DB_NAME,
 });
 
+// 🔥 FUNCIÓN TIPO TANQUE: Busca tu información ignorando si el token está roto o viejo
+const obtenerInquilinoReal = async (req) => {
+  try {
+    const usuarioIdGeneral = req.user.id; 
+    if (!usuarioIdGeneral) return null; // Si ni siquiera hay ID general, rechazamos.
+
+    // 1. Vamos directo a la Base de Datos a sacar tu correo real, sin importar lo que diga el navegador.
+    const usuarioBD = await pool.query('SELECT email FROM usuarios WHERE id = $1', [usuarioIdGeneral]);
+    
+    if (usuarioBD.rows.length > 0) {
+      const correoReal = usuarioBD.rows[0].email;
+      req.user.email = correoReal; // Lo guardamos para el chismoso de abajo
+
+      // 2. Con tu correo real, sacamos tu ID exacto de la tabla de inquilinos.
+      const inq = await pool.query('SELECT id FROM inquilinos WHERE email = $1', [correoReal]);
+      if (inq.rows.length > 0) {
+        return inq.rows[0].id; // ¡ENCONTRADO A LA FUERZA!
+      }
+    }
+    return null;
+  } catch (error) {
+    return null;
+  }
+};
+
 // ==========================================
-// MI DASHBOARD INQUILINO (Corregido para usuarios nuevos)
+// MI DASHBOARD INQUILINO
 // ==========================================
 router.get('/mi-dashboard', verifyToken, async (req, res) => {
   try {
-    const inquilinoId = req.user.inquilino_id;
+    const inquilinoId = await obtenerInquilinoReal(req);
     
-    // ✅ CORRECCIÓN: Si es usuario nuevo, devolvemos el dashboard vacío (NO un error 400)
+    console.log(`\n=================================`);
+    console.log(`🔍 [DEBUG] DASHBOARD DE INQUILINO`);
+    console.log(`👤 ID General del Token: ${req.user.id}`);
+    console.log(`📧 Correo Real (BD): ${req.user.email || 'No encontrado'}`);
+    console.log(`🔑 ID Inquilino Encontrado: ${inquilinoId}`);
+
     if (!inquilinoId) {
+      console.log(`❌ ERROR: No te encontré en la tabla 'inquilinos'.`);
+      console.log(`=================================\n`);
       return res.json({
-        tipoUsuario: 'inquilino',
-        contrato: null,
-        pagosPendientes: 0,
+        tipoUsuario: 'inquilino', contrato: null, pagosPendientes: 0,
         estadisticas: { cuotasPendientes: 0, totalAbonado: 0, saldoPendiente: 0, porcentajeProgreso: 0 },
-        ultimoPago: null,
-        proximoPago: null
+        ultimoPago: null, proximoPago: null
       });
     }
 
     const miContrato = await pool.query(`
-      SELECT c.*, p.codigo, p.direccion, p.precio_mensual
+      SELECT c.*, p.id as codigo, p.direccion, p.precio_mensual
       FROM contratos c
       JOIN propiedades p ON c.propiedad_id = p.id
       WHERE c.inquilino_id = $1 AND c.estado = 'activo'
@@ -44,67 +73,54 @@ router.get('/mi-dashboard', verifyToken, async (req, res) => {
       LIMIT 1
     `, [inquilinoId]);
 
-    // ✅ CORRECCIÓN: Si no tiene contrato activo, también devolvemos el dashboard vacío
+    console.log(`📄 Contratos ACTIVOS encontrados: ${miContrato.rows.length}`);
+    console.log(`=================================\n`);
+
     if (miContrato.rows.length === 0) {
       return res.json({
-        tipoUsuario: 'inquilino',
-        contrato: null,
-        pagosPendientes: 0,
+        tipoUsuario: 'inquilino', contrato: null, pagosPendientes: 0,
         estadisticas: { cuotasPendientes: 0, totalAbonado: 0, saldoPendiente: 0, porcentajeProgreso: 0 },
-        ultimoPago: null,
-        proximoPago: null
+        ultimoPago: null, proximoPago: null
       });
     }
 
     const pagosPendientes = await pool.query(`
-      SELECT COUNT(*) as total
-      FROM pagos p
+      SELECT COUNT(*) as total FROM pagos p
       JOIN contratos c ON p.contrato_id = c.id
       WHERE c.inquilino_id = $1 AND p.estado IN ('pendiente', 'atrasado')
     `, [inquilinoId]);
 
     const ultimoPago = await pool.query(`
-      SELECT p.*, c.monto_mensual
-      FROM pagos p
+      SELECT p.*, c.monto_mensual FROM pagos p
       JOIN contratos c ON p.contrato_id = c.id
       WHERE c.inquilino_id = $1 AND p.estado = 'aprobado'
-      ORDER BY p.fecha_pago DESC
-      LIMIT 1
+      ORDER BY p.fecha_pago DESC LIMIT 1
     `, [inquilinoId]);
 
     const proximoPago = await pool.query(`
-      SELECT p.*
-      FROM pagos p
+      SELECT p.* FROM pagos p
       JOIN contratos c ON p.contrato_id = c.id
       WHERE c.inquilino_id = $1 AND p.estado = 'pendiente'
-      ORDER BY p.fecha_vencimiento ASC
-      LIMIT 1
+      ORDER BY p.fecha_vencimiento ASC LIMIT 1
     `, [inquilinoId]);
 
     const totalPendientes = parseInt(pagosPendientes.rows[0].total);
 
     res.json({
-      tipoUsuario: 'inquilino',
-      contrato: miContrato.rows[0],
+      tipoUsuario: 'inquilino', contrato: miContrato.rows[0],
       pagosPendientes: totalPendientes,
-      estadisticas: {
-        cuotasPendientes: totalPendientes 
-      },
-      ultimoPago: ultimoPago.rows[0] || null,
-      proximoPago: proximoPago.rows[0] || null
+      estadisticas: { cuotasPendientes: totalPendientes },
+      ultimoPago: ultimoPago.rows[0] || null, proximoPago: proximoPago.rows[0] || null
     });
   } catch (error) {
-    console.error('❌ Error:', error);
+    console.error('❌ Error /mi-dashboard:', error);
     res.status(500).json({ message: 'Error al obtener dashboard' });
   }
 });
 
-// ==========================================
-// MI DEPARTAMENTO
-// ==========================================
 router.get('/mi-departamento', verifyToken, async (req, res) => {
   try {
-    const inquilinoId = req.user.inquilino_id;
+    const inquilinoId = await obtenerInquilinoReal(req);
     if (!inquilinoId) return res.json(null);
 
     const result = await pool.query(`
@@ -121,16 +137,13 @@ router.get('/mi-departamento', verifyToken, async (req, res) => {
   }
 });
 
-// ==========================================
-// MI CONTRATO
-// ==========================================
 router.get('/mi-contrato', verifyToken, async (req, res) => {
   try {
-    const inquilinoId = req.user.inquilino_id;
+    const inquilinoId = await obtenerInquilinoReal(req);
     if (!inquilinoId) return res.json(null);
 
     const result = await pool.query(`
-      SELECT c.*, p.codigo as departamento_codigo, p.direccion as departamento_direccion,
+      SELECT c.*, p.id as departamento_codigo, p.direccion as departamento_direccion,
              p.habitaciones as numero_habitaciones, p.banos as numero_banos, p.metros_cuadrados
       FROM contratos c
       JOIN propiedades p ON c.propiedad_id = p.id
@@ -145,16 +158,13 @@ router.get('/mi-contrato', verifyToken, async (req, res) => {
   }
 });
 
-// ==========================================
-// MIS PAGOS (Historial)
-// ==========================================
 router.get('/mis-pagos', verifyToken, async (req, res) => {
   try {
-    const inquilinoId = req.user.inquilino_id;
-    if (!inquilinoId) return res.json([]); // Si es nuevo, devuelve tabla vacía
+    const inquilinoId = await obtenerInquilinoReal(req);
+    if (!inquilinoId) return res.json([]); 
 
     const result = await pool.query(`
-      SELECT p.*, c.monto_mensual, pr.codigo as departamento_codigo
+      SELECT p.*, c.monto_mensual, pr.id as departamento_codigo
       FROM pagos p
       JOIN contratos c ON p.contrato_id = c.id
       JOIN propiedades pr ON c.propiedad_id = pr.id
@@ -168,63 +178,40 @@ router.get('/mis-pagos', verifyToken, async (req, res) => {
   }
 });
 
-// ==========================================
-// REGISTRAR PAGO (Corregido para coincidir con tu Frontend)
-// ==========================================
-router.post('/pagos', verifyToken, async (req, res) => { // ✅ CORRECCIÓN: Ahora se llama /pagos
+// ✅ RUTA DE PAGOS CORREGIDA (Usa 'comprobante' para que no explote la BD)
+router.post('/pagos', verifyToken, async (req, res) => { 
   try {
-    const inquilinoId = req.user.inquilino_id;
-    
-    if (!inquilinoId) {
-      return res.status(400).json({ message: 'Aún no tienes un contrato para realizar pagos' });
-    }
+    const inquilinoId = await obtenerInquilinoReal(req);
+    if (!inquilinoId) return res.status(400).json({ message: 'Aún no tienes contrato' });
 
-    // Recibimos los datos exactos que envía tu ventana flotante (RegistrarPago.jsx)
-    const { mes, monto, metodo } = req.body; 
-    
-    const contrato = await pool.query(`
-      SELECT id FROM contratos WHERE inquilino_id = $1 AND estado = 'activo' LIMIT 1
-    `, [inquilinoId]);
+    // 🔥 Extraemos comprobante_url de lo que nos manda el Frontend
+    const { mes, monto, metodo, comprobante_url } = req.body; 
+    const contrato = await pool.query(`SELECT id FROM contratos WHERE inquilino_id = $1 AND estado = 'activo' LIMIT 1`, [inquilinoId]);
 
-    if (contrato.rows.length === 0) {
-      return res.status(404).json({ message: 'No tienes un contrato activo' });
-    }
+    if (contrato.rows.length === 0) return res.status(404).json({ message: 'No tienes contrato activo' });
+    if (!mes || !monto) return res.status(400).json({ message: 'Faltan campos' });
 
-    if (!mes || !monto) {
-      return res.status(400).json({ message: 'Faltan campos obligatorios' });
-    }
+    console.log(`[BACKEND] Intentando guardar pago de $${monto} para el mes de ${mes}...`);
 
-    // Guardamos el pago como "En revisión / pendiente"
+    // 🔥 Lo guardamos en la columna 'comprobante' que creó tu compañera
     const result = await pool.query(`
-      INSERT INTO pagos (
-        contrato_id, mes, monto, fecha_pago, fecha_vencimiento, 
-        metodo_pago, estado, registrado_por
-      ) VALUES ($1, $2, $3, CURRENT_DATE, CURRENT_DATE + INTERVAL '5 days', $4, 'pendiente', $5)
-      RETURNING *
-    `, [
-      contrato.rows[0].id, 
-      mes, 
-      monto, 
-      metodo || 'transferencia',
-      req.user.id
-    ]);
+      INSERT INTO pagos (contrato_id, mes, monto, fecha_pago, fecha_vencimiento, metodo_pago, estado, registrado_por, comprobante) 
+      VALUES ($1, $2, $3, CURRENT_DATE, CURRENT_DATE + INTERVAL '5 days', $4, 'pendiente', $5, $6) RETURNING *
+    `, [contrato.rows[0].id, mes, monto, metodo || 'transferencia', req.user.id, comprobante_url || null]);
     
-    res.status(201).json({
-      message: 'Pago enviado a revisión exitosamente',
-      pago: result.rows[0]
-    });
+    console.log(`[BACKEND] ✅ Pago guardado con éxito en la BD.`);
+    res.status(201).json({ message: 'Pago enviado a revisión exitosamente', pago: result.rows[0] });
   } catch (error) {
-    console.error('❌ Error:', error);
-    res.status(500).json({ message: 'Error al registrar pago', error: error.message });
+    console.error('\n❌ ERROR EXACTO AL GUARDAR PAGO:');
+    console.error(error.message);
+    console.error('====================================\n');
+    res.status(500).json({ message: 'Error al registrar pago' });
   }
 });
 
-// ==========================================
-// VER PERFIL
-// ==========================================
 router.get('/mi-perfil', verifyToken, async (req, res) => {
   try {
-    const inquilinoId = req.user.inquilino_id;
+    const inquilinoId = await obtenerInquilinoReal(req);
     if (!inquilinoId) return res.json(null);
     const result = await pool.query('SELECT * FROM inquilinos WHERE id = $1', [inquilinoId]);
     res.json(result.rows[0] || null);
@@ -233,12 +220,9 @@ router.get('/mi-perfil', verifyToken, async (req, res) => {
   }
 });
 
-// ==========================================
-// ACTUALIZAR PERFIL
-// ==========================================
 router.put('/mi-perfil', verifyToken, async (req, res) => {
   try {
-    const inquilinoId = req.user.inquilino_id;
+    const inquilinoId = await obtenerInquilinoReal(req);
     if (!inquilinoId) return res.status(400).json({ message: 'Usuario no asociado' });
     const { nombre, apellido, telefono, fecha_nacimiento, ocupacion } = req.body;
     const result = await pool.query(

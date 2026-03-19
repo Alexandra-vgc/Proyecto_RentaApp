@@ -20,7 +20,8 @@ import {
   CloudUpload, EventAvailable, CalendarMonth, LocationOn, CheckCircle,
   AttachMoney, Straighten, Hotel, Bathtub, Business, Rule, Info,
   Dashboard as DashboardIcon, WbSunny, TrendingUp, Apartment, EventNote,
-  ErrorOutline, WarningAmber, Visibility, Bed, VerifiedUser, Gavel // Icono para reglas
+  ErrorOutline, WarningAmber, Visibility, Bed, VerifiedUser, Gavel,
+  Payments, Check, Close, InsertPhoto // ✅ Iconos nuevos agregados para pagos
 } from "@mui/icons-material";
 
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
@@ -49,11 +50,15 @@ const AdminDashboard = () => {
   const [confirmarEliminar, setConfirmarEliminar] = useState({ open: false, id: null });
   const [previewProp, setPreviewProp] = useState(null);
 
+  // ✅ ESTADOS NUEVOS PARA PAGOS
+  const [pagosAdmin, setPagosAdmin] = useState([]); 
+  const [fotoComprobante, setFotoComprobante] = useState(null); 
+
   const [form, setForm] = useState({
     id: null, sector: "", ciudad: "", direccion: "", precio_mensual: "", habitaciones: "", 
     banos: "", metros_cuadrados: "", descripcion: "", imagen_url: "", imagenes_extra: [],
     tipo_propiedad: "Departamento", estado_amoblado: "Vacío", garantia: "", alicuota: "",
-    parqueaderos: "0", piso: "1", año_construccion: "2024", reglas: "", // Reglas inicializadas
+    parqueaderos: "0", piso: "1", año_construccion: "2024", reglas: "", 
     incluye_agua: false, incluye_luz: false, incluye_internet: false, mascotas: false,
     fumar: false, ascensor: false, seguridad: false, gym: false, piscina: false
   });
@@ -63,11 +68,13 @@ const AdminDashboard = () => {
 
   const API_PROPIEDADES = "http://localhost:5000/api/admin/propiedades";
   const API_SOLICITUDES = `http://localhost:5000/api/solicitudes/propietario/${userId}`;
+  const API_PAGOS = "http://localhost:5000/api/admin/pagos"; // ✅ RUTA NUEVA DE PAGOS
 
   useEffect(() => {
     cargarDatos();
     cargarSolicitudes();
     cargarContratos();
+    cargarPagos(); // ✅ CARGAMOS PAGOS AL INICIAR
   }, [userId]);
 
   const cargarDatos = async () => {
@@ -90,6 +97,27 @@ const AdminDashboard = () => {
       const res = await axios.get(`http://localhost:5000/api/contratos`);
       setContratos(res.data);
     } catch (err) { console.error(err); }
+  };
+
+  // ✅ FUNCIÓN PARA CARGAR PAGOS
+  const cargarPagos = async () => {
+    try {
+      const res = await axios.get(API_PAGOS);
+      setPagosAdmin(res.data);
+    } catch (error) {
+      console.error("Error al cargar pagos:", error);
+    }
+  };
+
+  // ✅ FUNCIÓN PARA APROBAR/RECHAZAR PAGO
+  const handleEstadoPago = async (id, nuevoEstado) => {
+    try {
+      await axios.put(`${API_PAGOS}/${id}/estado`, { estado: nuevoEstado });
+      setAlerta({ open: true, mensaje: `Pago ${nuevoEstado} correctamente`, severidad: "success" });
+      cargarPagos(); 
+    } catch (error) {
+      setAlerta({ open: true, mensaje: "Error al actualizar el pago", severidad: "error" });
+    }
   };
 
   const stats = useMemo(() => {
@@ -199,7 +227,6 @@ const AdminDashboard = () => {
   const solicitud = solicitudes.find((s) => s.id === solicitud_id);
   if (!solicitud) return;
 
-  // 💡 Inventamos o pedimos estos datos para que el contrato no sea pobre
   const contratoData = {
     solicitud_id: solicitud.id,
     propiedad_id: solicitud.propiedad_id,
@@ -209,12 +236,10 @@ const AdminDashboard = () => {
     nombre_cliente: solicitud.nombre_cliente,
     nombre_propiedad: solicitud.sector_propiedad || "Departamento Lujoso",
     tipo_cliente: tipo,
-    // --- DATOS NUEVOS PARA RELLENAR LA DB Y EL PDF ---
-    cedula: "172XXXXXXX", // Aquí podrías poner un prompt para pedirlos
+    cedula: "172XXXXXXX", 
     estado_civil: "SOLTERO/A",
     nacionalidad: "ECUATORIANA",
     direccion_cliente: "Calle Principal y Av. Interoceánica",
-    // Si es venta, rellenamos los campos que ahora salen NULL
     precio_total: tipo === 'comprador' ? (solicitud.precio_mensual * 12 * 10) : null,
     cuota_inicial: tipo === 'comprador' ? (solicitud.precio_mensual * 5) : null,
     numero_cuotas: tipo === 'comprador' ? 120 : null
@@ -222,7 +247,6 @@ const AdminDashboard = () => {
 
   try {
     const res = await axios.post("http://localhost:5000/api/contratos", contratoData);
-    // Llamamos al generador de archivos que tienes en la otra carpeta
     generarPDFContrato({ ...contratoData, id: res.data.id }, tipo);
     setAlerta({ open: true, mensaje: "✅ Contrato robusto generado", severidad: "success" });
   } catch (error) {
@@ -265,106 +289,116 @@ const AdminDashboard = () => {
         </DialogActions>
       </Dialog>
 
-      {/* --- MODAL DE PREVISUALIZACIÓN TIPO PUBLICACIÓN --- */}
-{/* --- MODAL DE PREVISUALIZACIÓN CORREGIDO (CON SCROLL Y SIN BOTÓN) --- */}
-<Dialog 
-  open={!!previewProp} 
-  onClose={() => setPreviewProp(null)} 
-  maxWidth="md" 
-  fullWidth 
-  PaperProps={{ 
-    sx: { 
-      borderRadius: 4, 
-      overflow: 'hidden',
-      maxHeight: '90vh' // Evita que el modal se salga de la pantalla
-    } 
-  }}
->
-  {previewProp && (
-    <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, height: '100%' }}>
-      
-      {/* LADO IZQUIERDO: IMAGEN FIJA */}
-      <Box sx={{ width: { xs: '100%', md: '50%' }, position: 'relative', bgcolor: '#000' }}>
-        <CardMedia 
-          component="img" 
-          image={previewProp.imagen_url || "https://via.placeholder.com/400"} 
-          sx={{ height: '100%', objectFit: 'cover' }} 
-        />
-        <Chip 
-          label="Vista Previa de Publicación" 
-          sx={{ position: 'absolute', top: 16, left: 16, bgcolor: palette.titulos, color: 'white', fontWeight: 'bold' }} 
-        />
-      </Box>
+      {/* ✅ MODAL PARA VER FOTO DE PAGO */}
+      <Dialog open={!!fotoComprobante} onClose={() => setFotoComprobante(null)} maxWidth="sm" fullWidth PaperProps={{ sx: { borderRadius: "16px", p: 2, bgcolor: '#f5f5f5' } }}>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+          <Typography variant="h6" fontWeight="bold" color={palette.titulos}>Comprobante de Pago</Typography>
+          <IconButton onClick={() => setFotoComprobante(null)}><Close /></IconButton>
+        </Box>
+        <Box sx={{ textAlign: 'center' }}>
+          {fotoComprobante ? (
+            <img src={fotoComprobante} alt="Comprobante" style={{ width: '100%', maxHeight: '70vh', objectFit: 'contain', borderRadius: '8px' }} />
+          ) : (
+            <Typography>No hay imagen disponible</Typography>
+          )}
+        </Box>
+      </Dialog>
 
-      {/* LADO DERECHO: CONTENIDO CON SCROLL */}
-      <Box sx={{ 
-        p: 4, 
-        width: { xs: '100%', md: '50%' }, 
-        bgcolor: 'white',
-        overflowY: 'auto', // ✅ ESTO PERMITE BAJAR PARA VER TODO
-        maxHeight: { md: '600px', xs: 'auto' } 
-      }}>
-        <Typography variant="h4" sx={{ fontWeight: 900, color: palette.titulos, fontFamily: 'serif', lineHeight: 1.2 }}>
-          {previewProp.sector}
-        </Typography>
-        
-        <Stack direction="row" spacing={1} alignItems="center" sx={{ color: palette.textoSecundario, mt: 1, mb: 2 }}>
-          <LocationOn fontSize="small" />
-          <Typography variant="body2">{previewProp.ciudad}, Ecuador</Typography>
-        </Stack>
+      <Dialog 
+        open={!!previewProp} 
+        onClose={() => setPreviewProp(null)} 
+        maxWidth="md" 
+        fullWidth 
+        PaperProps={{ 
+          sx: { 
+            borderRadius: 4, 
+            overflow: 'hidden',
+            maxHeight: '90vh'
+          } 
+        }}
+      >
+        {previewProp && (
+          <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, height: '100%' }}>
+            
+            <Box sx={{ width: { xs: '100%', md: '50%' }, position: 'relative', bgcolor: '#000' }}>
+              <CardMedia 
+                component="img" 
+                image={previewProp.imagen_url || "https://via.placeholder.com/400"} 
+                sx={{ height: '100%', objectFit: 'cover' }} 
+              />
+              <Chip 
+                label="Vista Previa de Publicación" 
+                sx={{ position: 'absolute', top: 16, left: 16, bgcolor: palette.titulos, color: 'white', fontWeight: 'bold' }} 
+              />
+            </Box>
 
-        <Typography variant="h3" sx={{ color: palette.botonPrincipal, fontWeight: 900, mb: 3 }}>
-          ${previewProp.precio_mensual}
-        </Typography>
-        
-        <Stack direction="row" spacing={3} sx={{ mb: 3, p: 2, bgcolor: palette.fondoAlterno, borderRadius: 2 }}>
-          <Stack direction="row" spacing={1} alignItems="center">
-            <Bed sx={{ color: palette.detallesDorado }} />
-            <Typography variant="body2" fontWeight="bold">{previewProp.habitaciones} Hab.</Typography>
-          </Stack>
-          <Stack direction="row" spacing={1} alignItems="center">
-            <Bathtub sx={{ color: palette.detallesDorado }} />
-            <Typography variant="body2" fontWeight="bold">{previewProp.banos} Baños</Typography>
-          </Stack>
-        </Stack>
+            <Box sx={{ 
+              p: 4, 
+              width: { xs: '100%', md: '50%' }, 
+              bgcolor: 'white',
+              overflowY: 'auto',
+              maxHeight: { md: '600px', xs: 'auto' } 
+            }}>
+              <Typography variant="h4" sx={{ fontWeight: 900, color: palette.titulos, fontFamily: 'serif', lineHeight: 1.2 }}>
+                {previewProp.sector}
+              </Typography>
+              
+              <Stack direction="row" spacing={1} alignItems="center" sx={{ color: palette.textoSecundario, mt: 1, mb: 2 }}>
+                <LocationOn fontSize="small" />
+                <Typography variant="body2">{previewProp.ciudad}, Ecuador</Typography>
+              </Stack>
 
-        <Typography variant="subtitle2" sx={{ fontWeight: 'bold', color: palette.titulos, mb: 1 }}>
-          Descripción:
-        </Typography>
-        <Typography variant="body2" sx={{ color: '#555', mb: 3, lineHeight: 1.6 }}>
-          {previewProp.descripcion}
-        </Typography>
-        
-        {/* REGLAS DEL DEPARTAMENTO */}
-        {previewProp.reglas && (
-          <Box sx={{ mb: 3, p: 2, borderLeft: `4px solid ${palette.detallesDorado}`, bgcolor: '#fffde7', borderRadius: '0 8px 8px 0' }}>
-            <Typography variant="caption" sx={{ fontWeight: 'bold', color: palette.titulos, display: 'flex', alignItems: 'center', gap: 1, textTransform: 'uppercase', mb: 0.5 }}>
-              <Gavel sx={{ fontSize: 16 }} /> Reglas y Convivencia:
-            </Typography>
-            <Typography variant="body2" sx={{ color: '#555' }}>
-              {previewProp.reglas}
-            </Typography>
+              <Typography variant="h3" sx={{ color: palette.botonPrincipal, fontWeight: 900, mb: 3 }}>
+                ${previewProp.precio_mensual}
+              </Typography>
+              
+              <Stack direction="row" spacing={3} sx={{ mb: 3, p: 2, bgcolor: palette.fondoAlterno, borderRadius: 2 }}>
+                <Stack direction="row" spacing={1} alignItems="center">
+                  <Bed sx={{ color: palette.detallesDorado }} />
+                  <Typography variant="body2" fontWeight="bold">{previewProp.habitaciones} Hab.</Typography>
+                </Stack>
+                <Stack direction="row" spacing={1} alignItems="center">
+                  <Bathtub sx={{ color: palette.detallesDorado }} />
+                  <Typography variant="body2" fontWeight="bold">{previewProp.banos} Baños</Typography>
+                </Stack>
+              </Stack>
+
+              <Typography variant="subtitle2" sx={{ fontWeight: 'bold', color: palette.titulos, mb: 1 }}>
+                Descripción:
+              </Typography>
+              <Typography variant="body2" sx={{ color: '#555', mb: 3, lineHeight: 1.6 }}>
+                {previewProp.descripcion}
+              </Typography>
+              
+              {previewProp.reglas && (
+                <Box sx={{ mb: 3, p: 2, borderLeft: `4px solid ${palette.detallesDorado}`, bgcolor: '#fffde7', borderRadius: '0 8px 8px 0' }}>
+                  <Typography variant="caption" sx={{ fontWeight: 'bold', color: palette.titulos, display: 'flex', alignItems: 'center', gap: 1, textTransform: 'uppercase', mb: 0.5 }}>
+                    <Gavel sx={{ fontSize: 16 }} /> Reglas y Convivencia:
+                  </Typography>
+                  <Typography variant="body2" sx={{ color: '#555' }}>
+                    {previewProp.reglas}
+                  </Typography>
+                </Box>
+              )}
+
+              <Typography variant="subtitle2" sx={{ fontWeight: 'bold', color: palette.titulos, mb: 1 }}>
+                Servicios Incluidos:
+              </Typography>
+              <Stack direction="row" spacing={1} flexWrap="wrap" gap={1} sx={{ mb: 2 }}>
+                {previewProp.incluye_agua && <Chip label="Agua" size="small" variant="outlined" color="primary" />}
+                {previewProp.incluye_internet && <Chip label="WiFi" size="small" variant="outlined" color="success" />}
+                {previewProp.mascotas && <Chip label="Mascotas ok" size="small" variant="outlined" color="secondary" />}
+              </Stack>
+
+              <Divider sx={{ my: 3 }} />
+              
+              <Typography variant="caption" color="textSecondary" textAlign="center" display="block">
+                Fin de la vista previa. Así es como los inquilinos verán tu anuncio.
+              </Typography>
+            </Box>
           </Box>
         )}
-
-        <Typography variant="subtitle2" sx={{ fontWeight: 'bold', color: palette.titulos, mb: 1 }}>
-          Servicios Incluidos:
-        </Typography>
-        <Stack direction="row" spacing={1} flexWrap="wrap" gap={1} sx={{ mb: 2 }}>
-          {previewProp.incluye_agua && <Chip label="Agua" size="small" variant="outlined" color="primary" />}
-          {previewProp.incluye_internet && <Chip label="WiFi" size="small" variant="outlined" color="success" />}
-          {previewProp.mascotas && <Chip label="Mascotas ok" size="small" variant="outlined" color="secondary" />}
-        </Stack>
-
-        <Divider sx={{ my: 3 }} />
-        
-        <Typography variant="caption" color="textSecondary" textAlign="center" display="block">
-          Fin de la vista previa. Así es como los inquilinos verán tu anuncio.
-        </Typography>
-      </Box>
-    </Box>
-  )}
-</Dialog>
+      </Dialog>
 
       <AppBar position="fixed" sx={{ width: `calc(100% - ${drawerWidth}px)`, ml: `${drawerWidth}px`, bgcolor: "white", color: palette.titulos, boxShadow: "none", borderBottom: `1px solid ${palette.textoSecundario}33` }}>
         <Toolbar sx={{ justifyContent: "space-between" }}>
@@ -391,7 +425,9 @@ const AdminDashboard = () => {
           {[{ id: "mis-departamentos", icon: <Home />, label: "Mis Propiedades" },
             { id: "publicar", icon: <Add />, label: "Publicar Nuevo" },
             { id: "solicitudes", icon: <Mail />, label: "Citas / Agendas" },
-            { id: "contratos", icon: <Description />, label: "Contratos Generados" }].map((item) => (
+            { id: "contratos", icon: <Description />, label: "Contratos Generados" },
+            { id: "pagos", icon: <Payments />, label: "Revisión de Pagos" } // ✅ BOTÓN NUEVO
+          ].map((item) => (
             <ListItemButton key={item.id} selected={aseccion === item.id} onClick={() => { setSeccion(item.id); if (item.id === "publicar") resetForm(); }} sx={{ borderRadius: 1, mb: 1 }}>
               <ListItemIcon>{item.icon}</ListItemIcon>
               <ListItemText primary={item.label} />
@@ -458,6 +494,7 @@ const AdminDashboard = () => {
           </Grid>
         )}
 
+        {/* ✅ TU SECCIÓN DE PUBLICAR INTACTA */}
         {aseccion === "publicar" && (
           <Container maxWidth="md">
             <Paper sx={{ p: 5, bgcolor: palette.fondoAlterno, borderRadius: 2 }}>
@@ -482,11 +519,9 @@ const AdminDashboard = () => {
                   <Grid item size={{ xs: 12, md: 6 }}><TextField select label="Tipo" fullWidth value={form.tipo_propiedad} onChange={(e) => setForm({...form, tipo_propiedad: e.target.value})}>{["Departamento", "Casa", "Suite", "Estudio"].map(opt => <MenuItem key={opt} value={opt}>{opt}</MenuItem>)}</TextField></Grid>
                   <Grid item size={{ xs: 12, md: 6 }}><TextField select label="Mobiliario" fullWidth value={form.estado_amoblado} onChange={(e) => setForm({...form, estado_amoblado: e.target.value})}>{["Amoblado", "Semi-amoblado", "Vacío"].map(opt => <MenuItem key={opt} value={opt}>{opt}</MenuItem>)}</TextField></Grid>
                   
-                  {/* SECCIÓN 4 CORREGIDA: INCLUYE REGLAS */}
                   <Grid item size={{ xs: 12 }} sx={{ mt: 2 }}><Typography variant="h6" color={palette.botonPrincipal} sx={{ display: 'flex', alignItems: 'center', gap: 1, fontWeight: 700 }}><Rule /> 4. Servicios Incluidos y Reglas</Typography><Divider sx={{ my: 1, borderBottomWidth: 2, borderColor: palette.botonPrincipal }} /></Grid>
                   <Grid item size={{ xs: 12 }}><FormGroup sx={{ display: 'flex', flexDirection: 'row', gap: 2 }}><FormControlLabel control={<Checkbox checked={form.incluye_agua} onChange={(e) => setForm({...form, incluye_agua: e.target.checked})} />} label="Agua" /><FormControlLabel control={<Checkbox checked={form.incluye_luz} onChange={(e) => setForm({...form, incluye_luz: e.target.checked})} />} label="Luz" /><FormControlLabel control={<Checkbox checked={form.incluye_internet} onChange={(e) => setForm({...form, incluye_internet: e.target.checked})} />} label="WiFi" /><FormControlLabel control={<Checkbox checked={form.mascotas} onChange={(e) => setForm({...form, mascotas: e.target.checked})} />} label="Mascotas ok" /></FormGroup></Grid>
                   
-                  {/* CAMPO DE REGLAS AUMENTADO */}
                   <Grid item size={{ xs: 12 }}>
                     <TextField 
                       label="Reglas del Departamento (ej: No ruidos después de las 10 PM, No fiestas)" 
@@ -516,112 +551,111 @@ const AdminDashboard = () => {
           </Container>
         )}
 
-{aseccion === "solicitudes" && (
-  <TableContainer component={Paper} sx={{ borderRadius: "15px", boxShadow: "0 4px 20px rgba(0,0,0,0.05)" }}>
-    <Table>
-      <TableHead sx={{ bgcolor: palette.fondoAlterno }}>
-        <TableRow>
-          <TableCell sx={{ fontWeight: 'bold', color: palette.titulos }}>Inmueble</TableCell>
-          <TableCell sx={{ fontWeight: 'bold', color: palette.titulos }}>Cliente</TableCell>
-          <TableCell sx={{ fontWeight: 'bold', color: palette.titulos }}>Fecha / Hora</TableCell>
-          <TableCell sx={{ fontWeight: 'bold', color: palette.titulos }}>Estado</TableCell>
-          <TableCell sx={{ fontWeight: 'bold', color: palette.titulos }}>Acciones</TableCell>
-        </TableRow>
-      </TableHead>
-      <TableBody>
-        {solicitudes.map((sol) => {
-          const indexProp = propiedades.findIndex(p => p.id === sol.propiedad_id) + 1;
-          const propInfo = propiedades.find(p => p.id === sol.propiedad_id);
+        {aseccion === "solicitudes" && (
+          <TableContainer component={Paper} sx={{ borderRadius: "15px", boxShadow: "0 4px 20px rgba(0,0,0,0.05)" }}>
+            <Table>
+              <TableHead sx={{ bgcolor: palette.fondoAlterno }}>
+                <TableRow>
+                  <TableCell sx={{ fontWeight: 'bold', color: palette.titulos }}>Inmueble</TableCell>
+                  <TableCell sx={{ fontWeight: 'bold', color: palette.titulos }}>Cliente</TableCell>
+                  <TableCell sx={{ fontWeight: 'bold', color: palette.titulos }}>Fecha / Hora</TableCell>
+                  <TableCell sx={{ fontWeight: 'bold', color: palette.titulos }}>Estado</TableCell>
+                  <TableCell sx={{ fontWeight: 'bold', color: palette.titulos }}>Acciones</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {solicitudes.map((sol) => {
+                  const indexProp = propiedades.findIndex(p => p.id === sol.propiedad_id) + 1;
+                  const propInfo = propiedades.find(p => p.id === sol.propiedad_id);
 
-          return (
-            <TableRow key={sol.id} hover>
-              <TableCell>
-                <Typography variant="body2" sx={{ fontWeight: 800, color: palette.botonPrincipal }}>
-                  Inmueble #{indexProp > 0 ? indexProp : sol.propiedad_id}
-                </Typography>
-                <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block' }}>
-                  {propInfo ? propInfo.sector : 'Cargando...'}
-                </Typography>
-              </TableCell>
+                  return (
+                    <TableRow key={sol.id} hover>
+                      <TableCell>
+                        <Typography variant="body2" sx={{ fontWeight: 800, color: palette.botonPrincipal }}>
+                          Inmueble #{indexProp > 0 ? indexProp : sol.propiedad_id}
+                        </Typography>
+                        <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block' }}>
+                          {propInfo ? propInfo.sector : 'Cargando...'}
+                        </Typography>
+                      </TableCell>
 
-              <TableCell>
-                <Typography variant="body2" sx={{ fontWeight: 600 }}>{sol.nombre_cliente}</Typography>
-                <Typography variant="caption" sx={{ color: palette.textoSecundario }}>{sol.correo_cliente}</Typography>
-              </TableCell>
+                      <TableCell>
+                        <Typography variant="body2" sx={{ fontWeight: 600 }}>{sol.nombre_cliente}</Typography>
+                        <Typography variant="caption" sx={{ color: palette.textoSecundario }}>{sol.correo_cliente}</Typography>
+                      </TableCell>
 
-              <TableCell sx={{ fontSize: '0.85rem' }}>
-                {new Date(sol.fecha_cita).toLocaleDateString('es-EC', { day: '2-digit', month: '2-digit', year: 'numeric' })}
-                <br />
-                <Typography variant="caption" sx={{ fontWeight: 'bold', color: '#666' }}>{sol.hora_cita}</Typography>
-              </TableCell>
+                      <TableCell sx={{ fontSize: '0.85rem' }}>
+                        {new Date(sol.fecha_cita).toLocaleDateString('es-EC', { day: '2-digit', month: '2-digit', year: 'numeric' })}
+                        <br />
+                        <Typography variant="caption" sx={{ fontWeight: 'bold', color: '#666' }}>{sol.hora_cita}</Typography>
+                      </TableCell>
 
-              <TableCell>
-                <Chip 
-                  label={sol.estado} 
-                  size="small"
-                  sx={{ 
-                    bgcolor: sol.estado === 'aceptada' ? '#e8f5e9' : '#f5f5f5', 
-                    color: sol.estado === 'aceptada' ? '#2e7d32' : '#757575',
-                    fontWeight: 'bold', textTransform: 'uppercase', fontSize: '0.65rem'
-                  }} 
-                />
-              </TableCell>
+                      <TableCell>
+                        <Chip 
+                          label={sol.estado} 
+                          size="small"
+                          sx={{ 
+                            bgcolor: sol.estado === 'aceptada' ? '#e8f5e9' : '#f5f5f5', 
+                            color: sol.estado === 'aceptada' ? '#2e7d32' : '#757575',
+                            fontWeight: 'bold', textTransform: 'uppercase', fontSize: '0.65rem'
+                          }} 
+                        />
+                      </TableCell>
 
-              <TableCell>
-                <Stack direction="column" spacing={1}>
-                  {/* Si la cita está pendiente, mostramos botón de Aceptar */}
-                  {sol.estado === 'pendiente' && (
-                    <Button 
-                      variant="contained" 
-                      size="small" 
-                      onClick={() => handleAceptarCita(sol.id, sol.correo_cliente, sol.nombre_cliente)}
-                      sx={{ textTransform: 'none', borderRadius: '8px' }}
-                    >
-                      Aceptar Cita
-                    </Button>
-                  )}
+                      <TableCell>
+                        <Stack direction="column" spacing={1}>
+                          {sol.estado === 'pendiente' && (
+                            <Button 
+                              variant="contained" 
+                              size="small" 
+                              onClick={() => handleAceptarCita(sol.id, sol.correo_cliente, sol.nombre_cliente)}
+                              sx={{ textTransform: 'none', borderRadius: '8px' }}
+                            >
+                              Aceptar Cita
+                            </Button>
+                          )}
 
-                  {/* Si la cita está aceptada, habilitamos las dos opciones de contrato */}
-                  {sol.estado === 'aceptada' && (
-                    <Stack direction="row" spacing={1}>
-                      <Button 
-                        variant="contained" 
-                        size="small" 
-                        onClick={() => iniciarContrato(sol.id, 'inquilino')}
-                        sx={{ 
-                          bgcolor: palette.titulos, 
-                          textTransform: 'none', 
-                          borderRadius: '8px', 
-                          fontSize: '0.7rem',
-                          '&:hover': { bgcolor: '#3d472f' } 
-                        }}
-                      >
-                        + Arriendo
-                      </Button>
-                      <Button 
-                        variant="contained" 
-                        size="small" 
-                        onClick={() => iniciarContrato(sol.id, 'comprador')}
-                        sx={{ 
-                          bgcolor: palette.botonPrincipal, 
-                          textTransform: 'none', 
-                          borderRadius: '8px', 
-                          fontSize: '0.7rem' 
-                        }}
-                      >
-                        + Venta
-                      </Button>
-                    </Stack>
-                  )}
-                </Stack>
-              </TableCell>
-            </TableRow>
-          );
-        })}
-      </TableBody>
-    </Table>
-  </TableContainer>
-)}
+                          {sol.estado === 'aceptada' && (
+                            <Stack direction="row" spacing={1}>
+                              <Button 
+                                variant="contained" 
+                                size="small" 
+                                onClick={() => iniciarContrato(sol.id, 'inquilino')}
+                                sx={{ 
+                                  bgcolor: palette.titulos, 
+                                  textTransform: 'none', 
+                                  borderRadius: '8px', 
+                                  fontSize: '0.7rem',
+                                  '&:hover': { bgcolor: '#3d472f' } 
+                                }}
+                              >
+                                + Arriendo
+                              </Button>
+                              <Button 
+                                variant="contained" 
+                                size="small" 
+                                onClick={() => iniciarContrato(sol.id, 'comprador')}
+                                sx={{ 
+                                  bgcolor: palette.botonPrincipal, 
+                                  textTransform: 'none', 
+                                  borderRadius: '8px', 
+                                  fontSize: '0.7rem' 
+                                }}
+                              >
+                                + Venta
+                              </Button>
+                            </Stack>
+                          )}
+                        </Stack>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        )}
+
         {aseccion === "contratos" && (
           <Box>{contratos.map(c => (
             <Paper key={c.id} sx={{ p: 2, mb: 2, display: 'flex', justifyContent: 'space-between' }}>
@@ -630,6 +664,90 @@ const AdminDashboard = () => {
             </Paper>
           ))}</Box>
         )}
+
+        {/* ✅ NUEVA SECCIÓN DE PAGOS */}
+        {aseccion === "pagos" && (
+          <Container maxWidth="lg">
+            <Typography variant="h4" sx={{ fontWeight: 900, mb: 4, color: palette.titulos }}>Control de Pagos 💰</Typography>
+            
+            <TableContainer component={Paper} sx={{ borderRadius: "15px", boxShadow: "0 4px 20px rgba(0,0,0,0.05)" }}>
+              <Table>
+                <TableHead sx={{ bgcolor: palette.fondoAlterno }}>
+                  <TableRow>
+                    <TableCell sx={{ fontWeight: 'bold', color: palette.titulos }}>Inquilino</TableCell>
+                    <TableCell sx={{ fontWeight: 'bold', color: palette.titulos }}>Propiedad</TableCell>
+                    <TableCell sx={{ fontWeight: 'bold', color: palette.titulos }}>Mes / Monto</TableCell>
+                    <TableCell sx={{ fontWeight: 'bold', color: palette.titulos }}>Comprobante</TableCell>
+                    <TableCell sx={{ fontWeight: 'bold', color: palette.titulos }}>Estado</TableCell>
+                    <TableCell sx={{ fontWeight: 'bold', color: palette.titulos, textAlign: 'center' }}>Acciones</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {pagosAdmin.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={6} align="center" sx={{ py: 5 }}>
+                        <Typography color="textSecondary">No hay pagos registrados aún.</Typography>
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    pagosAdmin.map((pago) => (
+                      <TableRow key={pago.id} hover>
+                        <TableCell>
+                          <Typography variant="body2" fontWeight="bold">{pago.nombre_cliente}</Typography>
+                          <Typography variant="caption" color="textSecondary">
+                            {new Date(pago.fecha_pago).toLocaleDateString()}
+                          </Typography>
+                        </TableCell>
+                        <TableCell>
+                          <Typography variant="body2">{pago.nombre_propiedad}</Typography>
+                        </TableCell>
+                        <TableCell>
+                          <Typography variant="body2" fontWeight="bold" color={palette.botonPrincipal}>${pago.monto}</Typography>
+                          <Typography variant="caption">Mes: {pago.mes}</Typography>
+                        </TableCell>
+                        <TableCell>
+                          {pago.comprobante ? (
+                            <Button size="small" variant="outlined" startIcon={<InsertPhoto />} onClick={() => setFotoComprobante(pago.comprobante)} sx={{ textTransform: 'none', borderRadius: 2 }}>
+                              Ver Foto
+                            </Button>
+                          ) : (
+                            <Typography variant="caption" color="textSecondary">Sin imagen</Typography>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          <Chip 
+                            label={pago.estado} 
+                            size="small" 
+                            sx={{ 
+                              bgcolor: pago.estado === 'aprobado' ? '#e8f5e9' : pago.estado === 'rechazado' ? '#ffebee' : '#fff3e0', 
+                              color: pago.estado === 'aprobado' ? '#2e7d32' : pago.estado === 'rechazado' ? '#c62828' : '#ef6c00',
+                              fontWeight: 'bold', textTransform: 'uppercase', fontSize: '0.7rem'
+                            }} 
+                          />
+                        </TableCell>
+                        <TableCell align="center">
+                          {pago.estado === 'pendiente' ? (
+                            <Stack direction="row" spacing={1} justifyContent="center">
+                              <IconButton onClick={() => handleEstadoPago(pago.id, 'aprobado')} sx={{ bgcolor: '#e8f5e9', color: '#2e7d32', '&:hover': { bgcolor: '#c8e6c9' } }} title="Aprobar">
+                                <Check fontSize="small" />
+                              </IconButton>
+                              <IconButton onClick={() => handleEstadoPago(pago.id, 'rechazado')} sx={{ bgcolor: '#ffebee', color: '#c62828', '&:hover': { bgcolor: '#ffcdd2' } }} title="Rechazar">
+                                <Close fontSize="small" />
+                              </IconButton>
+                            </Stack>
+                          ) : (
+                            <Typography variant="caption" color="textSecondary">Revisado</Typography>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          </Container>
+        )}
+
       </Box>
     </Box>
   );

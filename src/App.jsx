@@ -14,7 +14,6 @@ import authService from './services/authService';
 
 function App() {
   const [showWelcome, setShowWelcome] = useState(false);
-  
   const [isAuth, setIsAuth] = useState(authService.isAuthenticated());
 
   useEffect(() => {
@@ -28,18 +27,27 @@ function App() {
     };
   }, []);
 
-  // 🛡️ Guardias de Seguridad
+  // 🛡️ GUARDIA 1: Solo Inquilinos y Compradores (TU DASHBOARD)
   const ClienteRoute = ({ children }) => {
     const user = authService.getCurrentUser();
-    if (!user) return <Navigate to="/login" />;
-    if (user.rol === 'admin' || user.rol === 'propietario') return <Navigate to="/admin" />;
+    if (!user) return <Navigate to="/login" replace />;
+    
+    // Si es admin o propietario, patada hacia el admin dashboard
+    if (user.rol === 'admin' || user.rol === 'propietario') {
+      return <Navigate to="/admin" replace />;
+    }
     return children; 
   };
 
+  // 🛡️ GUARDIA 2: Solo Admin y Propietarios (EL DASHBOARD DE TU COMPAÑERA)
   const AdminRoute = ({ children }) => {
     const user = authService.getCurrentUser();
-    if (!user) return <Navigate to="/login" />;
-    if (user.rol !== 'admin' && user.rol !== 'propietario') return <Navigate to="/dashboard" />;
+    if (!user) return <Navigate to="/login" replace />;
+    
+    // Si NO es admin ni propietario, patada hacia el dashboard de clientes
+    if (user.rol !== 'admin' && user.rol !== 'propietario') {
+      return <Navigate to="/dashboard" replace />;
+    }
     return children;
   };
 
@@ -51,26 +59,25 @@ function App() {
             <strong>MiRentaAPP</strong>
           </Link>
           <div>
-            {/* ✅ Cambié el morado antiguo por el Terracota para que combine */}
             <Link to="/login" style={{ marginRight: "15px", textDecoration: "none", color: "#C66A3D", fontWeight: "bold" }}>Iniciar sesión</Link>
             <Link to="/register" style={{ textDecoration: "none", color: "#C66A3D", fontWeight: "bold" }}>Registrarse</Link>
           </div>
         </div>
       )}
 
-      {/* Se mostrará siempre que showWelcome sea true e isAuth sea false */}
       {showWelcome && !isAuth && (
         <WelcomeModal onFinish={() => setShowWelcome(false)} />
       )}
 
       <Routes>
+        {/* Rutas Públicas */}
         <Route path="/" element={<PublicHome />} />
         <Route path="/propiedad/:id" element={<PropertyDetail />} />
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
-        
         <Route path="/terminos" element={<Terminos />} />
 
+        {/* 🚦 TU ZONA PRIVADA (Inquilinos/Compradores) */}
         <Route 
           path="/dashboard" 
           element={
@@ -79,6 +86,8 @@ function App() {
             </ClienteRoute>
           } 
         />
+
+        {/* 🚦 ZONA PRIVADA DE TU COMPAÑERA (Admins/Propietarios) */}
         <Route 
           path="/admin" 
           element={
@@ -87,6 +96,8 @@ function App() {
             </AdminRoute>
           } 
         />
+
+        {/* Si escriben cualquier otra ruta que no exista, los manda al inicio */}
         <Route path="*" element={<Navigate to="/" />} />
       </Routes>
     </Router>

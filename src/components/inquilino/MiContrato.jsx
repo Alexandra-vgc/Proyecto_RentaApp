@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
 import authService from '../../services/authService';
+// ✅ IMPORTAMOS LA FUNCIÓN GENERADORA DE PDF DE TU COMPAÑERA
+import { generarPDFContrato } from '../admin/contratos/ModuloContratos';
 
 function MiContrato() {
   const [contrato, setContrato] = useState(null);
@@ -13,10 +15,9 @@ function MiContrato() {
   const cargarContrato = async () => {
     try {
       const token = authService.getToken();
-      const tipoUsuario = authService.getTipoUsuario();
-      const apiBase = tipoUsuario === 'comprador' ? '/api/comprador' : '/api/inquilino';
+      const apiBase = authService.getApiBase(); // ✅ Usamos la ruta correcta dinámicamente
 
-      const response = await axios.get(`http://localhost:5000${apiBase}/mi-contrato`, {
+      const response = await axios.get(`${apiBase}/mi-contrato`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setContrato(response.data);
@@ -29,8 +30,26 @@ function MiContrato() {
   };
 
   const handleDescargarPDF = () => {
-    // 🚀 Esto lo conectaremos más adelante cuando el backend de los PDFs esté listo
-    alert("¡Próximamente! El documento PDF de tu contrato estará disponible para descarga muy pronto.");
+    if (!contrato) return;
+    
+    // Obtenemos los datos del usuario actual para mandarlos al PDF
+    const user = authService.getCurrentUser();
+    const tipoUsuario = authService.getTipoUsuario();
+    
+    // Creamos un objeto con la estructura que espera la función de tu compañera
+    const datosContratoPDF = {
+      nombre_cliente: user.nombre || "Usuario",
+      nacionalidad: "ECUATORIANA", // Puedes pedir esto en el registro después
+      estado_civil: "SOLTERO/A",
+      cedula: "17XXXXXXXX",
+      nombre_propiedad: contrato.departamento_direccion || "Inmueble",
+      precio_total: contrato.monto_mensual * 100, // Estimación para venta
+      canon: contrato.monto_mensual,
+      fecha_inicio: new Date(contrato.fecha_inicio).toLocaleDateString(),
+    };
+
+    // ✅ LLAMAMOS A LA FUNCIÓN MÁGICA
+    generarPDFContrato(datosContratoPDF, tipoUsuario);
   };
 
   if (loading) {
@@ -42,7 +61,6 @@ function MiContrato() {
     );
   }
 
-  // ✅ PANTALLA VACÍA: Diseño elegante si aún no hay contrato
   if (!contrato) {
     return (
       <div className="empty-state-container" style={{ textAlign: 'center', padding: '80px 20px', background: 'var(--fondo-tarjeta)', borderRadius: '16px', border: '1px dashed var(--texto-secundario)' }}>
@@ -55,7 +73,6 @@ function MiContrato() {
     );
   }
 
-  // ✅ PANTALLA CON DATOS: La tarjeta del contrato
   const esComprador = authService.getTipoUsuario() === 'comprador';
 
   return (
@@ -64,11 +81,10 @@ function MiContrato() {
         Gestión de Contrato
       </h2>
 
-      <div className="modern-card" style={{ padding: '40px', position: 'relative', overflow: 'hidden' }}>
+      <div className="modern-card" style={{ padding: '40px', position: 'relative', overflow: 'hidden', background: 'white', borderRadius: '12px', boxShadow: '0 4px 15px rgba(0,0,0,0.05)' }}>
         
-        {/* Etiqueta de estado en la esquina */}
         <div style={{ position: 'absolute', top: '30px', right: '-35px', background: '#2e7d32', color: 'white', padding: '8px 40px', transform: 'rotate(45deg)', fontWeight: 'bold', fontSize: '12px', letterSpacing: '1px', boxShadow: '0 2px 5px rgba(0,0,0,0.2)' }}>
-          ACTIVO
+          {contrato.estado.toUpperCase()}
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '20px', marginBottom: '35px', borderBottom: '1px solid var(--lineas-bordes)', paddingBottom: '25px' }}>
@@ -85,7 +101,6 @@ function MiContrato() {
           </div>
         </div>
 
-        {/* Cuadrícula de Datos */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '25px', marginBottom: '40px' }}>
           
           <div style={{ background: 'var(--fondo-principal)', padding: '20px', borderRadius: '12px', borderLeft: '4px solid var(--color-primario)' }}>
@@ -109,7 +124,6 @@ function MiContrato() {
 
         </div>
 
-        {/* Sección de Descarga */}
         <div style={{ background: '#f8f9fa', padding: '30px', borderRadius: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', border: '1px solid #e9ecef' }}>
           <div>
             <h4 style={{ margin: '0 0 8px 0', color: '#2c3e50', fontSize: '18px' }}>Documento Digital (PDF)</h4>
