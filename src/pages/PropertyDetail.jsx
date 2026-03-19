@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import axios from "axios";
 import authService from "../services/authService"; 
+import MapaInteractiva from "../components/admin/MapaInteractiva";
 import { 
   Box, Container, Typography, Button, Grid, Paper, Stack, Divider, 
   CircularProgress, Dialog, DialogTitle, DialogContent, TextField, DialogActions,
@@ -159,6 +160,31 @@ export default function PropertyDetail() {
                 ))}
               </List>
             </Paper>
+
+            <Box sx={{ mt: 3, mb: 1 }}>
+  <Typography variant="subtitle1" sx={{ fontWeight: 800, color: palette.titulos, mb: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
+    <LocationOn fontSize="small" /> Ubicación del inmueble
+  </Typography>
+  
+  <Paper elevation={0} sx={{ borderRadius: 2, overflow: 'hidden', border: '1px solid #eee' }}>
+    {/* Verificamos que existan coordenadas válidas antes de mostrar el mapa */}
+    {property.latitud !== null && property.latitud !== undefined && property.latitud !== "" &&
+     property.longitud !== null && property.longitud !== undefined && property.longitud !== "" ? (
+      <MapaInteractiva 
+        lat={Number(property.latitud)} 
+        lng={Number(property.longitud)} 
+        soloLectura={true} 
+      />
+    ) : (
+      <Box sx={{ p: 3, textAlign: 'center', bgcolor: '#f5f5f5' }}>
+        <Typography variant="caption" color="textSecondary">
+          Ubicación geográfica no disponible para esta propiedad.
+        </Typography>
+      </Box>
+    )}
+  </Paper>
+</Box>
+
 
             {/* BOTÓN DE AGENDAR */}
             <Button 

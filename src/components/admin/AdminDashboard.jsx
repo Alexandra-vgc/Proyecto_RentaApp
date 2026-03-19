@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import jsPDF from "jspdf";
 import authService from "../../services/authService";
 import { generarPDFContrato } from "./contratos/ModuloContratos";
+import MapaInteractiva from "./MapaInteractiva";
 
 import {
   Box, Drawer, List, ListItemButton, ListItemIcon, ListItemText, AppBar,
@@ -59,9 +60,10 @@ const AdminDashboard = () => {
     banos: "", metros_cuadrados: "", descripcion: "", imagen_url: "", imagenes_extra: [],
     tipo_propiedad: "Departamento", estado_amoblado: "Vacío", garantia: "", alicuota: "",
     parqueaderos: "0", piso: "1", año_construccion: "2024", reglas: "", 
-    incluye_agua: false, incluye_luz: false, incluye_internet: false, mascotas: false,
-    fumar: false, ascensor: false, seguridad: false, gym: false, piscina: false
-  });
+    incluye_agua: true, incluye_luz: true, incluye_internet: true, mascotas: false,
+    fumar: false, ascensor: false, seguridad: false, gym: false, piscina: false,
+    latitud: "", longitud: "" // ✅ Añade estos dos aquí
+});
   
   const currentUser = authService.getCurrentUser();
   const userId = currentUser ? currentUser.id : null;
@@ -167,8 +169,13 @@ const AdminDashboard = () => {
         banos: parseInt(form.banos) || 0,
         parqueaderos: parseInt(form.parqueaderos) || 0,
         metros_cuadrados: parseFloat(form.metros_cuadrados) || 0,
+        // ✅ AQUÍ ESTÁ EL CAMBIO PARA EL MAPA:
+        latitud: form.latitud ? parseFloat(form.latitud) : null, 
+      longitud: form.longitud ? parseFloat(form.longitud) : null, 
         estado: form.estado || "disponible"
       };
+
+      
 
       if (form.id) {
         await axios.put(`${API_PROPIEDADES}/${form.id}`, dataToSend);
@@ -192,8 +199,9 @@ const AdminDashboard = () => {
     banos: "", metros_cuadrados: "", descripcion: "", imagen_url: "", imagenes_extra: [],
     tipo_propiedad: "Departamento", estado_amoblado: "Vacío", garantia: "", alicuota: "",
     parqueaderos: "0", piso: "1", año_construccion: "2024", reglas: "",
-    incluye_agua: false, incluye_luz: false, incluye_internet: false, mascotas: false,
-    fumar: false, ascensor: false, seguridad: false, gym: false, piscina: false
+    incluye_agua: true, incluye_luz: true, incluye_internet: true, mascotas: false,
+    fumar: false, ascensor: false, seguridad: false, gym: false, piscina: false,
+    latitud: "", longitud: "" // ✅ AÑADE ESTO TAMBIÉN
   });
 
   const handleConfirmarEliminar = (id) => {
@@ -507,7 +515,37 @@ const AdminDashboard = () => {
                   <Grid item size={{ xs: 12 }}><TextField label="Título del Anuncio" fullWidth value={form.sector} onChange={(e) => setForm({...form, sector: e.target.value})} /></Grid>
                   <Grid item size={{ xs: 12, md: 6 }}><TextField label="Ciudad" fullWidth value={form.ciudad} onChange={(e) => setForm({...form, ciudad: e.target.value})} /></Grid>
                   <Grid item size={{ xs: 12, md: 6 }}><TextField label="Sector / Barrio" fullWidth value={form.direccion} onChange={(e) => setForm({...form, direccion: e.target.value})} /></Grid>
-                  <Grid item size={{ xs: 12 }} sx={{ mt: 2 }}><Typography variant="h6" color={palette.botonPrincipal} sx={{ display: 'flex', alignItems: 'center', gap: 1, fontWeight: 700 }}><AttachMoney /> 2. Información de Precio y Garantía</Typography><Divider sx={{ my: 1, borderBottomWidth: 2, borderColor: palette.botonPrincipal }} /></Grid>
+                  {/* ✅ MAPA Y COORDENADAS PARA EL USUARIO */}
+<Grid item size={{ xs: 12 }} sx={{ mt: 2 }}>
+  <Typography variant="subtitle2" sx={{ color: palette.titulos, mb: 1, fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: 1 }}>
+    <LocationOn fontSize="small" /> Ubicación en el Mapa (Haz clic para marcar el punto exacto)
+  </Typography>
+  
+  <MapaInteractiva 
+    lat={form.latitud} 
+    lng={form.longitud} 
+    onLocationSelect={(lat, lng) => setForm({...form, latitud: lat, longitud: lng})} 
+  />
+</Grid>
+
+<Grid size={{ xs: 12, md: 6 }}>
+  <TextField 
+    label="Latitud (Coordenada N/S)" 
+    fullWidth 
+    value={form.latitud} 
+    InputLabelProps={{ shrink: true }} // ✅ Esto arregla el amontonamiento
+    placeholder="Selecciona en el mapa"
+  />
+</Grid>
+<Grid size={{ xs: 12, md: 6 }}>
+  <TextField 
+    label="Longitud (Coordenada E/O)" 
+    fullWidth 
+    value={form.longitud} 
+    InputLabelProps={{ shrink: true }} // ✅ Esto arregla el amontonamiento
+    placeholder="Selecciona en el mapa"
+  />
+</Grid>                  <Grid item size={{ xs: 12 }} sx={{ mt: 2 }}><Typography variant="h6" color={palette.botonPrincipal} sx={{ display: 'flex', alignItems: 'center', gap: 1, fontWeight: 700 }}><AttachMoney /> 2. Información de Precio y Garantía</Typography><Divider sx={{ my: 1, borderBottomWidth: 2, borderColor: palette.botonPrincipal }} /></Grid>
                   <Grid item size={{ xs: 12, md: 4 }}><TextField label="Renta Mensual ($)" type="number" fullWidth value={form.precio_mensual} onChange={(e) => setForm({...form, precio_mensual: e.target.value})} /></Grid>
                   <Grid item size={{ xs: 12, md: 4 }}><TextField label="Depósito / Garantía ($)" type="number" fullWidth value={form.garantia} onChange={(e) => setForm({...form, garantia: e.target.value})} /></Grid>
                   <Grid item size={{ xs: 12, md: 4 }}><TextField label="Alícuota ($)" type="number" fullWidth value={form.alicuota} onChange={(e) => setForm({...form, alicuota: e.target.value})} /></Grid>
@@ -519,8 +557,53 @@ const AdminDashboard = () => {
                   <Grid item size={{ xs: 12, md: 6 }}><TextField select label="Tipo" fullWidth value={form.tipo_propiedad} onChange={(e) => setForm({...form, tipo_propiedad: e.target.value})}>{["Departamento", "Casa", "Suite", "Estudio"].map(opt => <MenuItem key={opt} value={opt}>{opt}</MenuItem>)}</TextField></Grid>
                   <Grid item size={{ xs: 12, md: 6 }}><TextField select label="Mobiliario" fullWidth value={form.estado_amoblado} onChange={(e) => setForm({...form, estado_amoblado: e.target.value})}>{["Amoblado", "Semi-amoblado", "Vacío"].map(opt => <MenuItem key={opt} value={opt}>{opt}</MenuItem>)}</TextField></Grid>
                   
-                  <Grid item size={{ xs: 12 }} sx={{ mt: 2 }}><Typography variant="h6" color={palette.botonPrincipal} sx={{ display: 'flex', alignItems: 'center', gap: 1, fontWeight: 700 }}><Rule /> 4. Servicios Incluidos y Reglas</Typography><Divider sx={{ my: 1, borderBottomWidth: 2, borderColor: palette.botonPrincipal }} /></Grid>
-                  <Grid item size={{ xs: 12 }}><FormGroup sx={{ display: 'flex', flexDirection: 'row', gap: 2 }}><FormControlLabel control={<Checkbox checked={form.incluye_agua} onChange={(e) => setForm({...form, incluye_agua: e.target.checked})} />} label="Agua" /><FormControlLabel control={<Checkbox checked={form.incluye_luz} onChange={(e) => setForm({...form, incluye_luz: e.target.checked})} />} label="Luz" /><FormControlLabel control={<Checkbox checked={form.incluye_internet} onChange={(e) => setForm({...form, incluye_internet: e.target.checked})} />} label="WiFi" /><FormControlLabel control={<Checkbox checked={form.mascotas} onChange={(e) => setForm({...form, mascotas: e.target.checked})} />} label="Mascotas ok" /></FormGroup></Grid>
+                  <Grid item size={{ xs: 12 }} sx={{ mt: 2 }}>
+  <Typography variant="h6" color={palette.botonPrincipal} sx={{ display: 'flex', alignItems: 'center', gap: 1, fontWeight: 700 }}>
+    <Rule /> 4. Servicios Incluidos y Reglas
+  </Typography>
+  <Divider sx={{ my: 1, borderBottomWidth: 2, borderColor: palette.botonPrincipal }} />
+</Grid>
+                  <Grid item size={{ xs: 12 }}>
+  <Paper variant="outlined" sx={{ p: 2, borderRadius: 2, bgcolor: "#fff", border: '1px solid #ddd' }}>
+    <Stack direction="column" spacing={2}>
+      {/* SERVICIOS BÁSICOS */}
+      <Stack direction="row" spacing={3}>
+        <FormControlLabel control={<Checkbox checked={form.incluye_agua} onChange={(e) => setForm({...form, incluye_agua: e.target.checked})} />} label="Agua" />
+        <FormControlLabel control={<Checkbox checked={form.incluye_luz} onChange={(e) => setForm({...form, incluye_luz: e.target.checked})} />} label="Luz" />
+        <FormControlLabel control={<Checkbox checked={form.incluye_internet} onChange={(e) => setForm({...form, incluye_internet: e.target.checked})} />} label="WiFi" />
+      </Stack>
+
+      <Divider />
+
+      {/* POLÍTICA DE MASCOTAS PERSONALIZADA */}
+      <FormControlLabel 
+        control={
+          <Checkbox 
+            checked={form.mascotas} 
+            onChange={(e) => {
+              const checked = e.target.checked;
+              setForm({
+                ...form, 
+                mascotas: checked,
+                // Agregamos automáticamente la regla de comportamiento si marca el check
+                reglas: checked 
+                  ? (form.reglas + "\n- Se aceptan mascotas (bajo estrictas políticas de higiene y comportamiento educado).").trim() 
+                  : form.reglas
+              });
+            }} 
+            color="warning"
+          />
+        } 
+        label={
+          <Box>
+            <Typography variant="body2" sx={{ fontWeight: 'bold' }}>Se aceptan mascotas</Typography>
+            <Typography variant="caption" color="textSecondary">* Bajo estrictas políticas de higiene y comportamiento educado.</Typography>
+          </Box>
+        } 
+      />
+    </Stack>
+  </Paper>
+</Grid>
                   
                   <Grid item size={{ xs: 12 }}>
                     <TextField 

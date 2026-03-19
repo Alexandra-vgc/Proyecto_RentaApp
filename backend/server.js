@@ -141,7 +141,8 @@ app.post('/api/admin/propiedades', async (req, res) => {
             habitaciones, banos, metros_cuadrados, parqueaderos,
             tipo_propiedad, estado_amoblado,
             incluye_agua, incluye_luz, incluye_internet, mascotas,
-            reglas, descripcion, imagen_url, imagenes_extra, estado 
+            reglas, descripcion, imagen_url, imagenes_extra, estado,
+            latitud, longitud
         } = req.body;
 
         const precioFinal = precio_mensual || 0;
@@ -153,8 +154,9 @@ app.post('/api/admin/propiedades', async (req, res) => {
                 habitaciones, banos, metros_cuadrados, parqueaderos,
                 tipo_propiedad, estado_amoblado,
                 incluye_agua, incluye_luz, incluye_internet, mascotas_permitidas,
-                reglas, descripcion, imagen_url, imagenes_extra, estado
-            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22) 
+                reglas, descripcion, imagen_url, imagenes_extra, estado,
+                latitud, longitud
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24) 
             RETURNING *`;
 
         const values = [
@@ -163,7 +165,8 @@ app.post('/api/admin/propiedades', async (req, res) => {
             habitaciones || 0, banos || 0, metros_cuadrados || 0, parqueaderos || 0,
             tipo_propiedad || 'Departamento', estado_amoblado || 'Vacío',
             incluye_agua || false, incluye_luz || false, incluye_internet || false, mascotas || false,
-            reglas || '', descripcion || '', imagen_url || null, imagenes_extra || [], estado || 'disponible'
+            reglas || '', descripcion || '', imagen_url || null, imagenes_extra || [], estado || 'disponible',
+            latitud || null, longitud || null
         ];
 
         const result = await pool.query(query, values);
@@ -177,33 +180,37 @@ app.post('/api/admin/propiedades', async (req, res) => {
 app.put('/api/admin/propiedades/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const { 
-      codigo, sector, ciudad, direccion, 
-      precio_mensual, garantia, alicuota,
-      habitaciones, banos, metros_cuadrados, parqueaderos,
-      tipo_propiedad, estado_amoblado,
-      incluye_agua, incluye_luz, incluye_internet, mascotas_permitidas,
-      reglas, descripcion, imagen_url, imagenes_extra, estado 
-    } = req.body;
-
-    const query = `
-      UPDATE propiedades SET 
-        codigo=$1, sector=$2, ciudad=$3, direccion=$4, 
-        precio_mensual=$5, garantia=$6, alicuota=$7,
-        habitaciones=$8, banos=$9, metros_cuadrados=$10, parqueaderos=$11,
-        tipo_propiedad=$12, estado_amoblado=$13,
-        incluye_agua=$14, incluye_luz=$15, incluye_internet=$16, 
-        mascotas_permitidas=$17, reglas=$18, descripcion=$19, 
-        imagen_url=$20, imagenes_extra=$21, estado=$22
-      WHERE id=$23 RETURNING *`;
-
-    const values = [
-      codigo, sector, ciudad, direccion, 
+    const {
+      codigo, sector, ciudad, direccion,
       precio_mensual, garantia, alicuota,
       habitaciones, banos, metros_cuadrados, parqueaderos,
       tipo_propiedad, estado_amoblado,
       incluye_agua, incluye_luz, incluye_internet, mascotas_permitidas,
       reglas, descripcion, imagen_url, imagenes_extra, estado,
+      latitud, longitud
+    } = req.body;
+
+    const query = `
+      UPDATE propiedades SET
+        codigo=$1, sector=$2, ciudad=$3, direccion=$4,
+        precio_mensual=$5, garantia=$6, alicuota=$7,
+        habitaciones=$8, banos=$9, metros_cuadrados=$10, parqueaderos=$11,
+        tipo_propiedad=$12, estado_amoblado=$13,
+        incluye_agua=$14, incluye_luz=$15, incluye_internet=$16,
+        mascotas_permitidas=$17, reglas=$18, descripcion=$19,
+        imagen_url=$20, imagenes_extra=$21, estado=$22,
+        latitud=$23, longitud=$24
+      WHERE id=$25 RETURNING *`;
+
+    const values = [
+      codigo, sector, ciudad, direccion,
+      precio_mensual || 0, garantia || 0, alicuota || 0,
+      habitaciones || 0, banos || 0, metros_cuadrados || 0, parqueaderos || 0,
+      tipo_propiedad || 'Departamento', estado_amoblado || 'Vacío',
+      incluye_agua || false, incluye_luz || false, incluye_internet || false,
+      mascotas_permitidas || false, reglas || '', descripcion || '',
+      imagen_url || null, imagenes_extra || [], estado || 'disponible',
+      latitud || null, longitud || null,
       id
     ];
 
