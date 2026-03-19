@@ -21,7 +21,7 @@ import {
   AttachMoney, Straighten, Hotel, Bathtub, Business, Rule, Info,
   Dashboard as DashboardIcon, WbSunny, TrendingUp, Apartment, EventNote,
   ErrorOutline, WarningAmber, Visibility, Bed, VerifiedUser, Gavel,
-  Payments, Check, Close, InsertPhoto // ✅ Iconos nuevos agregados para pagos
+  Payments, Check, Close, InsertPhoto, Build // ✅ Icono agregado para Mantenimiento
 } from "@mui/icons-material";
 
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
@@ -54,6 +54,10 @@ const AdminDashboard = () => {
   const [pagosAdmin, setPagosAdmin] = useState([]); 
   const [fotoComprobante, setFotoComprobante] = useState(null); 
 
+  // ✅ ESTADOS NUEVOS PARA MANTENIMIENTO (Añadido sin borrar nada)
+  const [mantenimientosAdmin, setMantenimientosAdmin] = useState([]);
+  const [fotoMantenimiento, setFotoMantenimiento] = useState(null);
+
   const [form, setForm] = useState({
     id: null, sector: "", ciudad: "", direccion: "", precio_mensual: "", habitaciones: "", 
     banos: "", metros_cuadrados: "", descripcion: "", imagen_url: "", imagenes_extra: [],
@@ -68,13 +72,15 @@ const AdminDashboard = () => {
 
   const API_PROPIEDADES = "http://localhost:5000/api/admin/propiedades";
   const API_SOLICITUDES = `http://localhost:5000/api/solicitudes/propietario/${userId}`;
-  const API_PAGOS = "http://localhost:5000/api/admin/pagos"; // ✅ RUTA NUEVA DE PAGOS
+  const API_PAGOS = "http://localhost:5000/api/admin/pagos"; 
+  const API_MANTENIMIENTOS = "http://localhost:5000/api/admin/mantenimientos"; // ✅ RUTA NUEVA DE MANTENIMIENTO
 
   useEffect(() => {
     cargarDatos();
     cargarSolicitudes();
     cargarContratos();
-    cargarPagos(); // ✅ CARGAMOS PAGOS AL INICIAR
+    cargarPagos(); 
+    cargarMantenimientos(); // ✅ CARGAMOS MANTENIMIENTOS AL INICIAR
   }, [userId]);
 
   const cargarDatos = async () => {
@@ -99,7 +105,6 @@ const AdminDashboard = () => {
     } catch (err) { console.error(err); }
   };
 
-  // ✅ FUNCIÓN PARA CARGAR PAGOS
   const cargarPagos = async () => {
     try {
       const res = await axios.get(API_PAGOS);
@@ -109,7 +114,6 @@ const AdminDashboard = () => {
     }
   };
 
-  // ✅ FUNCIÓN PARA APROBAR/RECHAZAR PAGO
   const handleEstadoPago = async (id, nuevoEstado) => {
     try {
       await axios.put(`${API_PAGOS}/${id}/estado`, { estado: nuevoEstado });
@@ -117,6 +121,26 @@ const AdminDashboard = () => {
       cargarPagos(); 
     } catch (error) {
       setAlerta({ open: true, mensaje: "Error al actualizar el pago", severidad: "error" });
+    }
+  };
+
+  // ✅ FUNCIONES PARA MANTENIMIENTO (Añadido sin borrar nada)
+  const cargarMantenimientos = async () => {
+    try {
+      const res = await axios.get(API_MANTENIMIENTOS);
+      setMantenimientosAdmin(res.data);
+    } catch (error) {
+      console.error("Error al cargar mantenimientos:", error);
+    }
+  };
+
+  const handleEstadoMantenimiento = async (id, nuevoEstado) => {
+    try {
+      await axios.put(`${API_MANTENIMIENTOS}/${id}/estado`, { estado: nuevoEstado });
+      setAlerta({ open: true, mensaje: `Mantenimiento marcado como ${nuevoEstado}`, severidad: "success" });
+      cargarMantenimientos(); 
+    } catch (error) {
+      setAlerta({ open: true, mensaje: "Error al actualizar estado", severidad: "error" });
     }
   };
 
@@ -289,7 +313,6 @@ const AdminDashboard = () => {
         </DialogActions>
       </Dialog>
 
-      {/* ✅ MODAL PARA VER FOTO DE PAGO */}
       <Dialog open={!!fotoComprobante} onClose={() => setFotoComprobante(null)} maxWidth="sm" fullWidth PaperProps={{ sx: { borderRadius: "16px", p: 2, bgcolor: '#f5f5f5' } }}>
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
           <Typography variant="h6" fontWeight="bold" color={palette.titulos}>Comprobante de Pago</Typography>
@@ -300,6 +323,21 @@ const AdminDashboard = () => {
             <img src={fotoComprobante} alt="Comprobante" style={{ width: '100%', maxHeight: '70vh', objectFit: 'contain', borderRadius: '8px' }} />
           ) : (
             <Typography>No hay imagen disponible</Typography>
+          )}
+        </Box>
+      </Dialog>
+
+      {/* ✅ MODAL PARA VER FOTO DE MANTENIMIENTO */}
+      <Dialog open={!!fotoMantenimiento} onClose={() => setFotoMantenimiento(null)} maxWidth="sm" fullWidth PaperProps={{ sx: { borderRadius: "16px", p: 2, bgcolor: '#f5f5f5' } }}>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+          <Typography variant="h6" fontWeight="bold" color={palette.titulos}>Foto del Daño</Typography>
+          <IconButton onClick={() => setFotoMantenimiento(null)}><Close /></IconButton>
+        </Box>
+        <Box sx={{ textAlign: 'center' }}>
+          {fotoMantenimiento ? (
+            <img src={fotoMantenimiento} alt="Mantenimiento" style={{ width: '100%', maxHeight: '70vh', objectFit: 'contain', borderRadius: '8px' }} />
+          ) : (
+            <Typography>No se adjuntó imagen</Typography>
           )}
         </Box>
       </Dialog>
@@ -426,7 +464,8 @@ const AdminDashboard = () => {
             { id: "publicar", icon: <Add />, label: "Publicar Nuevo" },
             { id: "solicitudes", icon: <Mail />, label: "Citas / Agendas" },
             { id: "contratos", icon: <Description />, label: "Contratos Generados" },
-            { id: "pagos", icon: <Payments />, label: "Revisión de Pagos" } // ✅ BOTÓN NUEVO
+            { id: "pagos", icon: <Payments />, label: "Revisión de Pagos" },
+            { id: "mantenimiento", icon: <Build />, label: "Mantenimiento" } // ✅ NUEVO BOTÓN
           ].map((item) => (
             <ListItemButton key={item.id} selected={aseccion === item.id} onClick={() => { setSeccion(item.id); if (item.id === "publicar") resetForm(); }} sx={{ borderRadius: 1, mb: 1 }}>
               <ListItemIcon>{item.icon}</ListItemIcon>
@@ -494,7 +533,6 @@ const AdminDashboard = () => {
           </Grid>
         )}
 
-        {/* ✅ TU SECCIÓN DE PUBLICAR INTACTA */}
         {aseccion === "publicar" && (
           <Container maxWidth="md">
             <Paper sx={{ p: 5, bgcolor: palette.fondoAlterno, borderRadius: 2 }}>
@@ -665,7 +703,6 @@ const AdminDashboard = () => {
           ))}</Box>
         )}
 
-        {/* ✅ NUEVA SECCIÓN DE PAGOS */}
         {aseccion === "pagos" && (
           <Container maxWidth="lg">
             <Typography variant="h4" sx={{ fontWeight: 900, mb: 4, color: palette.titulos }}>Control de Pagos 💰</Typography>
@@ -737,6 +774,101 @@ const AdminDashboard = () => {
                             </Stack>
                           ) : (
                             <Typography variant="caption" color="textSecondary">Revisado</Typography>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          </Container>
+        )}
+
+        {/* ✅ NUEVA SECCIÓN DE MANTENIMIENTO */}
+        {aseccion === "mantenimiento" && (
+          <Container maxWidth="lg">
+            <Typography variant="h4" sx={{ fontWeight: 900, mb: 4, color: palette.titulos }}>Reportes de Mantenimiento </Typography>
+            
+            <TableContainer component={Paper} sx={{ borderRadius: "15px", boxShadow: "0 4px 20px rgba(0,0,0,0.05)" }}>
+              <Table>
+                <TableHead sx={{ bgcolor: palette.fondoAlterno }}>
+                  <TableRow>
+                    <TableCell sx={{ fontWeight: 'bold', color: palette.titulos }}>Inquilino</TableCell>
+                    <TableCell sx={{ fontWeight: 'bold', color: palette.titulos }}>Propiedad</TableCell>
+                    <TableCell sx={{ fontWeight: 'bold', color: palette.titulos }}>Descripción del Daño</TableCell>
+                    <TableCell sx={{ fontWeight: 'bold', color: palette.titulos }}>Foto</TableCell>
+                    <TableCell sx={{ fontWeight: 'bold', color: palette.titulos }}>Estado</TableCell>
+                    <TableCell sx={{ fontWeight: 'bold', color: palette.titulos, textAlign: 'center' }}>Acciones</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {mantenimientosAdmin.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={6} align="center" sx={{ py: 5 }}>
+                        <Typography color="textSecondary">No hay reportes de mantenimiento. ¡Todo perfecto!</Typography>
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    mantenimientosAdmin.map((m) => (
+                      <TableRow key={m.id} hover>
+                        <TableCell>
+                          <Typography variant="body2" fontWeight="bold">{m.nombre_inquilino}</Typography>
+                          <Typography variant="caption" color="textSecondary">
+                            {new Date(m.fecha_reporte).toLocaleDateString()}
+                          </Typography>
+                        </TableCell>
+                        <TableCell>
+                          <Typography variant="body2">{m.nombre_propiedad}</Typography>
+                        </TableCell>
+                        <TableCell sx={{ maxWidth: '250px' }}>
+                          <Typography variant="body2" sx={{ whiteSpace: 'normal', wordWrap: 'break-word' }}>
+                            {m.descripcion}
+                          </Typography>
+                        </TableCell>
+                        <TableCell>
+                          {m.foto_url ? (
+                            <Button size="small" variant="outlined" startIcon={<InsertPhoto />} onClick={() => setFotoMantenimiento(m.foto_url)} sx={{ textTransform: 'none', borderRadius: 2 }}>
+                              Ver Foto
+                            </Button>
+                          ) : (
+                            <Typography variant="caption" color="textSecondary">Sin imagen</Typography>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          <Chip 
+                            label={m.estado} 
+                            size="small" 
+                            sx={{ 
+                              bgcolor: m.estado === 'Solucionado' ? '#e8f5e9' : m.estado === 'En Revisión' ? '#fff3e0' : '#ffebee', 
+                              color: m.estado === 'Solucionado' ? '#2e7d32' : m.estado === 'En Revisión' ? '#ef6c00' : '#c62828',
+                              fontWeight: 'bold', textTransform: 'uppercase', fontSize: '0.7rem'
+                            }} 
+                          />
+                        </TableCell>
+                        <TableCell align="center">
+                          {m.estado === 'Pendiente' && (
+                            <Button 
+                              size="small" 
+                              variant="contained" 
+                              onClick={() => handleEstadoMantenimiento(m.id, 'En Revisión')} 
+                              sx={{ bgcolor: '#f57c00', textTransform: 'none', borderRadius: 2, '&:hover': { bgcolor: '#ef6c00' } }}
+                            >
+                              Marcar en Revisión
+                            </Button>
+                          )}
+                          {m.estado === 'En Revisión' && (
+                            <Button 
+                              size="small" 
+                              variant="contained" 
+                              onClick={() => handleEstadoMantenimiento(m.id, 'Solucionado')} 
+                              sx={{ bgcolor: '#2e7d32', textTransform: 'none', borderRadius: 2, '&:hover': { bgcolor: '#1b5e20' } }}
+                            >
+                              Marcar Solucionado
+                            </Button>
+                          )}
+                          {m.estado === 'Solucionado' && (
+                            <Typography variant="caption" color="textSecondary">Cerrado el {new Date(m.fecha_solucion).toLocaleDateString()}</Typography>
                           )}
                         </TableCell>
                       </TableRow>

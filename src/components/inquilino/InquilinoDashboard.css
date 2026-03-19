@@ -1,17 +1,18 @@
 /* =========================================
-   PALETA DE COLORES - MIRENTAAPP (COMPETENCIA)
+   PALETA DE COLORES Y FUENTE ELEGANTE
 ========================================= */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+
 :root {
-  --fondo-principal: #E8DCCB;  /* Beige suave */
-  --fondo-tarjeta: #F5EFE6;    /* Crema claro */
-  --texto-secundario: #BFA58A; /* Arena tostado */
-  --color-primario: #C66A3D;   /* Terracota */
-  --texto-boton: #FFFFFF;      /* Blanco */
-  
-  /* Colores de contraste añadidos para la estructura */
-  --texto-oscuro: #4A3F35;     /* Marrón oscuro para títulos y lectura */
-  --lineas-bordes: #D9C8B4;    /* Beige oscuro para bordes y divisiones */
+  --fondo-principal: #E8DCCB;
+  --fondo-tarjeta: #F5EFE6;
+  --texto-secundario: #BFA58A;
+  --color-primario: #C66A3D;
+  --texto-boton: #FFFFFF;
+  --texto-oscuro: #4A3F35;
+  --lineas-bordes: #D9C8B4;
   --sombra-suave: rgba(74, 63, 53, 0.08); 
+  --fuente-global: 'Inter', 'Segoe UI', sans-serif;
 }
 
 /* =========================================
@@ -22,8 +23,9 @@
   flex-direction: column;
   min-height: 100vh;
   background-color: var(--fondo-principal);
-  font-family: 'Inter', 'Segoe UI', sans-serif;
+  font-family: var(--fuente-global);
   color: var(--texto-oscuro);
+  -webkit-font-smoothing: antialiased;
 }
 
 /* =========================================
@@ -46,16 +48,6 @@
   font-size: 1.5rem;
 }
 
-.user-badge {
-  background-color: var(--texto-secundario);
-  color: var(--fondo-tarjeta);
-  padding: 4px 10px;
-  border-radius: 20px;
-  font-size: 0.8rem;
-  margin-left: 10px;
-  font-weight: bold;
-}
-
 .btn-logout {
   background-color: transparent;
   color: var(--color-primario);
@@ -65,6 +57,7 @@
   cursor: pointer;
   font-weight: bold;
   transition: all 0.3s ease;
+  font-family: var(--fuente-global);
 }
 
 .btn-logout:hover {
@@ -88,7 +81,6 @@
   flex-direction: column;
 }
 
-/* --- PERFIL EN SIDEBAR --- */
 .sidebar-profile {
   display: flex;
   flex-direction: column;
@@ -129,7 +121,6 @@
   font-weight: 600;
 }
 
-/* --- BOTONES DEL SIDEBAR --- */
 .sidebar-item {
   display: flex;
   align-items: center;
@@ -143,6 +134,7 @@
   cursor: pointer;
   transition: all 0.3s ease;
   border-left: 4px solid transparent;
+  font-family: var(--fuente-global);
 }
 
 .sidebar-item:hover {
@@ -158,7 +150,9 @@
 
 .sidebar-item .icon {
   margin-right: 15px;
-  font-size: 1.2rem;
+  font-size: 1.3rem;
+  display: flex;
+  align-items: center;
 }
 
 /* =========================================
@@ -170,7 +164,6 @@
   overflow-y: auto;
 }
 
-/* --- BANNER DE BIENVENIDA --- */
 .welcome-banner {
   background-color: var(--fondo-tarjeta);
   border-radius: 16px;
@@ -180,18 +173,8 @@
   margin-bottom: 30px;
 }
 
-.welcome-banner h1 {
-  margin: 0 0 5px 0;
-  color: var(--texto-oscuro);
-}
-
-.welcome-banner p {
-  color: var(--texto-secundario);
-  margin: 0;
-}
-
 /* =========================================
-   ESTADÍSTICAS Y TARJETAS
+   ESTADÍSTICAS Y EFECTO ZOOM 🔥
 ========================================= */
 .stats-grid {
   display: grid;
@@ -204,31 +187,30 @@
   background-color: var(--fondo-tarjeta);
   border-radius: 12px;
   padding: 20px;
-  box-shadow: 0 6px 16px var(--sombra-suave);
+  box-shadow: 0 4px 10px rgba(0,0,0,0.05);
   display: flex;
-  flex-direction: column;
-  position: relative;
-  overflow: hidden;
+  flex-direction: row;
+  align-items: center;
   border: 1px solid var(--lineas-bordes);
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  /* 🔥 AQUÍ ESTÁ EL EFECTO DE ANIMACIÓN */
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  cursor: default;
 }
 
+/* 🔥 ESTE ES EL ZOOM CUANDO PASAS EL MOUSE */
 .stat-card.modern-card:hover {
-  transform: translateY(-3px);
-  box-shadow: 0 8px 24px rgba(74, 63, 53, 0.12);
+  transform: translateY(-8px) scale(1.03); 
+  box-shadow: 0 12px 25px rgba(74, 63, 53, 0.15);
 }
 
 .stat-icon-wrapper {
-  background-color: var(--fondo-principal);
-  color: var(--color-primario);
-  width: 45px;
-  height: 45px;
-  border-radius: 10px;
+  width: 55px;
+  height: 55px;
+  border-radius: 12px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 1.5rem;
-  margin-bottom: 15px;
+  margin-right: 15px;
 }
 
 .stat-label {
@@ -237,13 +219,15 @@
   text-transform: uppercase;
   font-weight: bold;
   letter-spacing: 0.5px;
+  display: block;
+  margin-bottom: 5px;
 }
 
 .stat-value {
-  margin: 5px 0 0 0;
+  margin: 0;
   font-size: 1.8rem;
   color: var(--texto-oscuro);
-  font-weight: bold;
+  font-weight: 800;
 }
 
 /* =========================================
@@ -256,11 +240,6 @@
   box-shadow: 0 6px 16px var(--sombra-suave);
   margin-bottom: 30px;
   border: 1px solid var(--lineas-bordes);
-}
-
-.progress-section h3 {
-  margin-top: 0;
-  color: var(--texto-oscuro);
 }
 
 .progress-bar-bg {
@@ -279,18 +258,6 @@
   transition: width 1s ease-in-out;
 }
 
-.progress-details {
-  display: flex;
-  justify-content: space-between;
-  color: var(--texto-secundario);
-  font-size: 0.95rem;
-}
-
-.progress-details strong {
-  color: var(--texto-oscuro);
-  font-size: 1.1rem;
-}
-
 /* =========================================
    ESTADO VACÍO (SIN CONTRATO)
 ========================================= */
@@ -302,19 +269,13 @@
   border: 1px dashed var(--texto-secundario);
 }
 
-.empty-state-icon {
-  font-size: 4rem;
-  margin-bottom: 20px;
-}
-
 /* =========================================
    BOTONES Y ALERTAS
 ========================================= */
 .alert-section {
   background-color: var(--fondo-tarjeta);
-  border-left: 5px solid #D9534F; /* Rojo para alertas */
   padding: 20px;
-  border-radius: 8px;
+  border-radius: 12px;
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -327,10 +288,11 @@
   border: none;
   font-weight: bold;
   cursor: pointer;
-  transition: opacity 0.3s;
+  font-family: var(--fuente-global);
+  transition: all 0.2s;
 }
 
-.btn-pay-now { padding: 12px 24px; border-radius: 8px; }
+.btn-pay-now { padding: 12px 24px; border-radius: 8px; font-size: 1rem; }
 .btn-explorar { padding: 15px 30px; border-radius: 8px; font-size: 1.1rem; }
 
 .btn-fab {
@@ -342,8 +304,10 @@
   border-radius: 50%;
   font-size: 1.5rem;
   box-shadow: 0 6px 20px rgba(198, 106, 61, 0.4);
+  z-index: 90;
 }
 
 .btn-pay-now:hover, .btn-explorar:hover, .btn-fab:hover {
-  opacity: 0.85;
+  transform: scale(1.05);
+  opacity: 0.9;
 }
