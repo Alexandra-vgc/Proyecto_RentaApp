@@ -33,19 +33,20 @@ function Mantenimiento() {
     cargarMantenimientos();
   }, []);
 
-  const cargarMantenimientos = async () => {
-    try {
-      const token = authService.getToken();
-      const response = await axios.get(`http://localhost:5000${apiBase}/mantenimientos`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      setMantenimientos(response.data);
-    } catch (error) {
-      console.error('Error al cargar mantenimientos:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+const cargarMantenimientos = async () => {
+  try {
+    const token = authService.getToken();
+    // Forzamos la ruta de inquilino directamente
+    const response = await axios.get(`http://localhost:5000/api/inquilino/mantenimientos`, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    setMantenimientos(response.data);
+  } catch (error) {
+    console.error('Error al cargar mantenimientos:', error);
+  } finally {
+    setLoading(false);
+  }
+};
 
   const handleImageUpload = (e) => {
     const file = e.target.files[0];
@@ -57,22 +58,23 @@ function Mantenimiento() {
   };
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
-    setSubmitting(true);
-    try {
-      const token = authService.getToken();
-      await axios.post(`http://localhost:5000${apiBase}/mantenimientos`, formData, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      setShowModal(false);
-      setFormData({ descripcion: '', foto_url: '' });
-      cargarMantenimientos(); 
-    } catch (error) {
-      alert(error.response?.data?.message || 'Error al enviar el reporte');
-    } finally {
-      setSubmitting(false);
-    }
-  };
+  e.preventDefault();
+  setSubmitting(true);
+  try {
+    const token = authService.getToken();
+    // Forzamos la ruta de inquilino directamente
+    await axios.post(`http://localhost:5000/api/inquilino/mantenimientos`, formData, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    setShowModal(false);
+    setFormData({ descripcion: '', foto_url: '' });
+    cargarMantenimientos(); 
+  } catch (error) {
+    alert(error.response?.data?.message || 'Error al enviar el reporte');
+  } finally {
+    setSubmitting(false);
+  }
+};
 
   if (loading) {
     return (

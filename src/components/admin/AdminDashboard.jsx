@@ -55,7 +55,7 @@ const AdminDashboard = () => {
   const [pagosAdmin, setPagosAdmin] = useState([]); 
   const [fotoComprobante, setFotoComprobante] = useState(null); 
   const [filtroPagosAdmin, setFiltroPagosAdmin] = useState('todos'); 
-  const [busquedaPagos, setBusquedaPagos] = useState(""); // ✅ NUEVO: ESTADO PARA LA BARRA DE BÚSQUEDA DE PAGOS
+  const [busquedaPagos, setBusquedaPagos] = useState(""); 
 
   // ESTADOS PARA MANTENIMIENTO
   const [mantenimientosAdmin, setMantenimientosAdmin] = useState([]);
@@ -68,7 +68,7 @@ const AdminDashboard = () => {
     parqueaderos: "0", piso: "1", año_construccion: "2024", reglas: "", 
     incluye_agua: true, incluye_luz: true, incluye_internet: true, mascotas: false,
     fumar: false, ascensor: false, seguridad: false, gym: false, piscina: false,
-    latitud: "", longitud: "" 
+    latitud: "", longitud: "", calle_secundaria: "" // ✅ FUSIÓN: Agregada variable de Nathasha
   });
   
   const currentUser = authService.getCurrentUser();
@@ -157,17 +157,14 @@ const AdminDashboard = () => {
     return { totalRenta, pendientes, chartData };
   }, [propiedades, solicitudes]);
 
-  // ✅ CONSTANTE PARA FILTRAR LOS PAGOS (AHORA INCLUYE BÚSQUEDA DE TEXTO Y BOTONES)
   const pagosAdminFiltrados = useMemo(() => {
     return pagosAdmin.filter(pago => {
-      // 1. Filtro por los botones
       const est = pago.estado?.toLowerCase() || 'pendiente';
       let pasaBoton = true;
       if (filtroPagosAdmin === 'aprobados') pasaBoton = (est === 'aprobado' || est === 'pagado');
       else if (filtroPagosAdmin === 'pendientes') pasaBoton = (est === 'pendiente');
       else if (filtroPagosAdmin === 'rechazados') pasaBoton = (est === 'rechazado' || est === 'atrasado');
 
-      // 2. Filtro por el texto que escribió el Admin (Nombre, Propiedad o Mes)
       const texto = busquedaPagos.toLowerCase();
       const pasaTexto = 
         (pago.nombre_cliente && pago.nombre_cliente.toLowerCase().includes(texto)) ||
@@ -205,6 +202,7 @@ const AdminDashboard = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
+      // ✅ FUSIÓN: Se agregan las funciones de Nathasha y las mías sin conflictos
       const dataToSend = {
         ...form,
         codigo: form.id ? form.codigo : `PROP-${Math.floor(Math.random() * 9000 + 1000)}`,
@@ -215,6 +213,8 @@ const AdminDashboard = () => {
         banos: parseInt(form.banos) || 0,
         parqueaderos: parseInt(form.parqueaderos) || 0,
         metros_cuadrados: parseFloat(form.metros_cuadrados) || 0,
+        imagen_url: form.imagen_url || "", 
+        imagenes_extra: form.imagenes_extra || [], 
         latitud: form.latitud ? parseFloat(form.latitud) : null, 
         longitud: form.longitud ? parseFloat(form.longitud) : null, 
         estado: form.estado || "disponible"
@@ -244,7 +244,7 @@ const AdminDashboard = () => {
     parqueaderos: "0", piso: "1", año_construccion: "2024", reglas: "",
     incluye_agua: true, incluye_luz: true, incluye_internet: true, mascotas: false,
     fumar: false, ascensor: false, seguridad: false, gym: false, piscina: false,
-    latitud: "", longitud: "" 
+    latitud: "", longitud: "", calle_secundaria: "" // ✅ FUSIÓN: Conservado de Nathasha
   });
 
   const handleConfirmarEliminar = (id) => {
@@ -274,36 +274,36 @@ const AdminDashboard = () => {
     setSeccion("publicar");
   };
 
- const iniciarContrato = async (solicitud_id, tipo) => {
-  const solicitud = solicitudes.find((s) => s.id === solicitud_id);
-  if (!solicitud) return;
+  const iniciarContrato = async (solicitud_id, tipo) => {
+    const solicitud = solicitudes.find((s) => s.id === solicitud_id);
+    if (!solicitud) return;
 
-  const contratoData = {
-    solicitud_id: solicitud.id,
-    propiedad_id: solicitud.propiedad_id,
-    fecha_inicio: new Date().toISOString().split("T")[0],
-    fecha_fin: new Date(new Date().setFullYear(new Date().getFullYear() + 1)).toISOString().split("T")[0],
-    canon: solicitud.precio_mensual || 0,
-    nombre_cliente: solicitud.nombre_cliente,
-    nombre_propiedad: solicitud.sector_propiedad || "Departamento Lujoso",
-    tipo_cliente: tipo,
-    cedula: "172XXXXXXX", 
-    estado_civil: "SOLTERO/A",
-    nacionalidad: "ECUATORIANA",
-    direccion_cliente: "Calle Principal y Av. Interoceánica",
-    precio_total: tipo === 'comprador' ? (solicitud.precio_mensual * 12 * 10) : null,
-    cuota_inicial: tipo === 'comprador' ? (solicitud.precio_mensual * 5) : null,
-    numero_cuotas: tipo === 'comprador' ? 120 : null
+    const contratoData = {
+      solicitud_id: solicitud.id,
+      propiedad_id: solicitud.propiedad_id,
+      fecha_inicio: new Date().toISOString().split("T")[0],
+      fecha_fin: new Date(new Date().setFullYear(new Date().getFullYear() + 1)).toISOString().split("T")[0],
+      canon: solicitud.precio_mensual || 0,
+      nombre_cliente: solicitud.nombre_cliente,
+      nombre_propiedad: solicitud.sector_propiedad || "Departamento Lujoso",
+      tipo_cliente: tipo,
+      cedula: "172XXXXXXX", 
+      estado_civil: "SOLTERO/A",
+      nacionalidad: "ECUATORIANA",
+      direccion_cliente: "Calle Principal y Av. Interoceánica",
+      precio_total: tipo === 'comprador' ? (solicitud.precio_mensual * 12 * 10) : null,
+      cuota_inicial: tipo === 'comprador' ? (solicitud.precio_mensual * 5) : null,
+      numero_cuotas: tipo === 'comprador' ? 120 : null
+    };
+
+    try {
+      const res = await axios.post("http://localhost:5000/api/contratos", contratoData);
+      generarPDFContrato({ ...contratoData, id: res.data.id }, tipo);
+      setAlerta({ open: true, mensaje: "✅ Contrato robusto generado", severidad: "success" });
+    } catch (error) {
+      setAlerta({ open: true, mensaje: "❌ Error al guardar en DB", severidad: "error" });
+    }
   };
-
-  try {
-    const res = await axios.post("http://localhost:5000/api/contratos", contratoData);
-    generarPDFContrato({ ...contratoData, id: res.data.id }, tipo);
-    setAlerta({ open: true, mensaje: "✅ Contrato robusto generado", severidad: "success" });
-  } catch (error) {
-    setAlerta({ open: true, mensaje: "❌ Error al guardar en DB", severidad: "error" });
-  }
-};
 
   const propiedadesFiltradas = useMemo(() => {
     const b = busqueda.toLowerCase();

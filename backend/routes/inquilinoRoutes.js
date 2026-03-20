@@ -243,6 +243,7 @@ router.put('/mi-perfil', verifyToken, async (req, res) => {
     res.status(500).json({ message: 'Error al actualizar perfil' });
   }
 });
+
 // ==========================================
 // 🛠️ MANTENIMIENTOS (Recuperado tras la mezcla de Git)
 // ==========================================
@@ -299,6 +300,5 @@ router.post('/mantenimientos', verifyToken, async (req, res) => {
     res.status(500).json({ message: 'Error al registrar el reporte' });
   }
 });
-
 
 export default router;

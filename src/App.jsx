@@ -10,6 +10,7 @@ import AdminDashboard from './components/admin/AdminDashboard';
 import PublicHome from "./pages/PublicHome";
 import PropertyDetail from "./pages/PropertyDetail";
 import VisitanteDashboard from './pages/VisitanteDashboard';
+import SectorResults from "./pages/SectorResults";
 
 import authService from './services/authService';
 
@@ -99,6 +100,7 @@ function App() {
           <Route path="/dashboard" element={<ClienteRoute><InquilinoDashboard /></ClienteRoute>} />
           <Route path="/admin" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
           <Route path="/visitante" element={<VisitanteRoute><VisitanteDashboard /></VisitanteRoute>} />
+          <Route path="/sector/:nombreSector" element={<SectorResults />} />
 
           <Route path="*" element={<Navigate to="/" />} />
         </Routes>

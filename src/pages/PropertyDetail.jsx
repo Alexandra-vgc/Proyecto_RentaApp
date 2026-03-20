@@ -6,9 +6,11 @@ import MapaInteractiva from "../components/admin/MapaInteractiva";
 import { 
   Box, Container, Typography, Button, Grid, Paper, Stack, Divider, 
   CircularProgress, Dialog, DialogTitle, DialogContent, TextField, DialogActions,
-  List, ListItem, Chip, IconButton
+  List, ListItem, Chip, IconButton, Tooltip
 } from "@mui/material";
-import { ArrowBack, Event, LocationOn, Info, Favorite, FavoriteBorder, Map } from "@mui/icons-material";
+
+// ✅ FUSIÓN PERFECTA: Tus íconos (Map) + Los íconos de Nathasha (Cancel, Help, Check)
+import { ArrowBack, Event, LocationOn, Info, Favorite, FavoriteBorder, Map, Cancel, HelpOutline, CheckCircleOutline } from "@mui/icons-material";
 
 const palette = { 
   fondoPrincipal: "#E8DCCB", 
@@ -26,11 +28,15 @@ export default function PropertyDetail() {
   const [openModal, setOpenModal] = useState(false);
   const [activeImg, setActiveImg] = useState(0);
 
+  // --- NUEVOS ESTADOS PARA CANCELACIÓN (De Nathasha) ---
+  const [citaExistente, setCitaExistente] = useState(null);
+  const [openModalCancel, setOpenModalCancel] = useState(false);
+  const [motivoCancelacion, setMotivoCancelacion] = useState("");
+
   const [citaForm, setCitaForm] = useState({
     nombre_cliente: "", correo_cliente: "", fecha_cita: "", hora_cita: ""
   });
 
-  // ✅ EXTRAEMOS EL USUARIO UNA SOLA VEZ PARA EVITAR EL LOOP INFINITO
   const [currentUser] = useState(authService.getCurrentUser());
   const isUserLogged = !!currentUser;
   const [isFavorito, setIsFavorito] = useState(false);
@@ -39,15 +45,20 @@ export default function PropertyDetail() {
     const fetchData = async () => {
       try {
         setLoading(true);
-        // Cargar detalles
         const resProp = await axios.get(`http://localhost:5000/api/admin/propiedades/${id}`);
         setProperty(resProp.data);
 
-        // ✅ Verificar favorito solo si está logueado
         if (isUserLogged) {
+          // Cargar favoritos
           const resFav = await axios.get(`http://localhost:5000/api/favoritos/${currentUser.id}`);
           const favsIds = resFav.data.map(f => f.id);
           setIsFavorito(favsIds.includes(parseInt(id)));
+
+          // ✅ VERIFICAR SI YA TIENE UNA CITA PARA ESTA PROPIEDAD
+          const resCitas = await axios.get(`http://localhost:5000/api/solicitudes/propietario/${currentUser.id}`);
+          // Filtramos las citas de este usuario para esta propiedad específica que no estén canceladas
+          const citaFound = resCitas.data.find(c => c.propiedad_id === parseInt(id) && c.correo_cliente === currentUser.email && c.estado !== 'cancelada');
+          setCitaExistente(citaFound || null);
         }
       } catch (err) {
         console.error("Error al cargar datos:", err.message);
@@ -57,7 +68,8 @@ export default function PropertyDetail() {
     };
     
     if (id) fetchData();
-  }, [id, isUserLogged, currentUser?.id]); // ✅ DEPENDENCIAS SEGURAS
+    // ✅ FUSIÓN: Tu validación de seguridad unida a las variables que usa Nathasha
+  }, [id, isUserLogged, currentUser?.id, currentUser?.email]);
 
   const toggleFavorito = async () => {
     if (!isUserLogged) {
@@ -79,9 +91,12 @@ export default function PropertyDetail() {
   const allImages = property ? [property.imagen_url, ...(property.imagenes_extra || [])].filter(img => img) : [];
 
   const handleOpenCita = () => {
-    if (isUserLogged) {
-      setCitaForm({ ...citaForm, nombre_cliente: currentUser.nombre, correo_cliente: currentUser.email });
+    if (!isUserLogged) {
+      alert("Debes iniciar sesión para agendar una visita.");
+      navigate('/login');
+      return;
     }
+    setCitaForm({ ...citaForm, nombre_cliente: currentUser.nombre, correo_cliente: currentUser.email });
     setOpenModal(true);
   };
 
@@ -90,14 +105,31 @@ export default function PropertyDetail() {
       alert("Completa todos los campos"); return;
     }
     try {
-      await axios.post("http://localhost:5000/api/solicitudes", {
+      const res = await axios.post("http://localhost:5000/api/solicitudes", {
         propiedad_id: id, arrendatario_id: currentUser?.id || null,
         ...citaForm, estado: "pendiente"
       });
       alert("✅ Solicitud enviada con éxito");
+      setCitaExistente(res.data); // Guardamos la cita recién creada
       setOpenModal(false);
     } catch (error) { alert("Error al agendar"); }
   };
+
+  // ✅ NUEVA FUNCIÓN PARA CANCELAR CITA (De Nathasha)
+  const ejecutarCancelacion = async () => {
+  // ... (validaciones de motivo)
+  try {
+    // Asegúrate de que la ruta coincida con el backend (/api/solicitudes/cancelar/)
+    await axios.put(`http://localhost:5000/api/solicitudes/cancelar/${citaExistente.id}`, {
+      motivo: motivoCancelacion
+    });
+    alert("Cita cancelada correctamente.");
+    setCitaExistente(null);
+    setOpenModalCancel(false);
+  } catch (error) {
+    alert("Error al cancelar la cita");
+  }
+};
 
   if (loading) return <Box sx={{ display: 'flex', justifyContent: 'center', mt: 10 }}><CircularProgress /></Box>;
   if (!property) return <Typography variant="h5" textAlign="center" mt={10}>Propiedad no encontrada</Typography>;
@@ -223,19 +255,68 @@ export default function PropertyDetail() {
         </Grid>
       </Container>
 
-      <Dialog open={openModal} onClose={() => setOpenModal(false)} fullWidth maxWidth="xs">
-        <DialogTitle sx={{ fontWeight: 800, textAlign: 'center' }}>Confirmar Visita</DialogTitle>
+      {/* MODAL AGENDAR */}
+      {/* MODAL AGENDAR - ACTUALIZADO PARA PRUEBAS */}
+<Dialog open={openModal} onClose={() => setOpenModal(false)} fullWidth maxWidth="xs" PaperProps={{ sx: { borderRadius: 3 } }}>
+  <DialogTitle sx={{ fontWeight: 800, textAlign: 'center', color: palette.titulos }}>Confirmar Visita</DialogTitle>
+  <DialogContent>
+    <Stack spacing={3} sx={{ mt: 1 }}>
+      {/* Quitamos el 'disabled' para que puedas escribir y probar libremente */}
+      <TextField 
+        label="Nombre" 
+        fullWidth 
+        value={citaForm.nombre_cliente} 
+        onChange={(e) => setCitaForm({ ...citaForm, nombre_cliente: e.target.value })} 
+      />
+      <TextField 
+        label="Correo" 
+        fullWidth 
+        value={citaForm.correo_cliente} 
+        onChange={(e) => setCitaForm({ ...citaForm, correo_cliente: e.target.value })} 
+      />
+      <TextField 
+        type="date" 
+        label="Fecha" 
+        InputLabelProps={{ shrink: true }} 
+        fullWidth 
+        value={citaForm.fecha_cita} 
+        onChange={(e) => setCitaForm({ ...citaForm, fecha_cita: e.target.value })} 
+      />
+      <TextField 
+        type="time" 
+        label="Hora" 
+        InputLabelProps={{ shrink: true }} 
+        fullWidth 
+        value={citaForm.hora_cita} 
+        onChange={(e) => setCitaForm({ ...citaForm, hora_cita: e.target.value })} 
+      />
+    </Stack>
+  </DialogContent>
+  <DialogActions sx={{ p: 3, justifyContent: 'center', gap: 2 }}>
+    <Button onClick={() => setOpenModal(false)} sx={{ color: 'gray' }}>Volver</Button>
+    <Button variant="contained" onClick={confirmarCita} sx={{ bgcolor: palette.botonPrincipal, px: 4, borderRadius: 2 }}>Confirmar Cita</Button>
+  </DialogActions>
+</Dialog>
+      {/* MODAL CANCELAR (PROFESIONAL) */}
+      <Dialog open={openModalCancel} onClose={() => setOpenModalCancel(false)} fullWidth maxWidth="xs" PaperProps={{ sx: { borderRadius: 3 } }}>
+        <DialogTitle sx={{ fontWeight: 800, textAlign: 'center', color: '#c62828', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1 }}>
+          <HelpOutline /> ¿Cancelar tu visita?
+        </DialogTitle>
         <DialogContent>
-          <Stack spacing={3} sx={{ mt: 1 }}>
-            <TextField label="Nombre" fullWidth value={citaForm.nombre_cliente} onChange={(e) => setCitaForm({ ...citaForm, nombre_cliente: e.target.value })} disabled={isUserLogged} />
-            <TextField label="Correo" fullWidth value={citaForm.correo_cliente} onChange={(e) => setCitaForm({ ...citaForm, correo_cliente: e.target.value })} disabled={isUserLogged} />
-            <TextField type="date" label="Fecha" InputLabelProps={{ shrink: true }} fullWidth value={citaForm.fecha_cita} onChange={(e) => setCitaForm({ ...citaForm, fecha_cita: e.target.value })} />
-            <TextField type="time" label="Hora" InputLabelProps={{ shrink: true }} fullWidth value={citaForm.hora_cita} onChange={(e) => setCitaForm({ ...citaForm, hora_cita: e.target.value })} />
-          </Stack>
+          <Typography variant="body2" sx={{ textAlign: 'center', color: '#666', mb: 3 }}>
+            Lamentamos que no puedas asistir. Por favor, indícanos el motivo para informar al propietario.
+          </Typography>
+          <TextField 
+            label="Motivo de cancelación" 
+            placeholder="Ej: Cambio de planes, emergencia médica..." 
+            multiline rows={3} fullWidth 
+            value={motivoCancelacion} 
+            onChange={(e) => setMotivoCancelacion(e.target.value)} 
+          />
         </DialogContent>
-        <DialogActions sx={{ p: 3 }}>
-          <Button onClick={() => setOpenModal(false)}>Cancelar</Button>
-          <Button variant="contained" onClick={confirmarCita} sx={{ bgcolor: palette.botonPrincipal }}>Confirmar</Button>
+        <DialogActions sx={{ p: 3, justifyContent: 'center', gap: 2 }}>
+          <Button onClick={() => setOpenModalCancel(false)} sx={{ color: 'gray' }}>Cerrar</Button>
+          <Button variant="contained" color="error" onClick={ejecutarCancelacion} sx={{ px: 4, borderRadius: 2 }}>Confirmar Cancelación</Button>
         </DialogActions>
       </Dialog>
     </Box>
