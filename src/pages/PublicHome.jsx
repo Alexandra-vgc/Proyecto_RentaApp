@@ -318,7 +318,8 @@ export default function PublicHome() {
         <Box sx={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundImage: 'url(https://images.unsplash.com/photo-1512917774080-9991f1c4c750?q=80&w=1200)', backgroundSize: 'cover', backgroundPosition: 'center', zIndex: 1 }} />
         <Box sx={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, background: `linear-gradient(to bottom, rgba(0,0,0,0.7), rgba(78,91,60,0.5))`, zIndex: 2 }} />
         <Box sx={{ position: 'relative', zIndex: 3, px: 2, width: '100%', maxWidth: '900px' }}>
-            <Typography variant="h3" sx={{ fontWeight: 900, mb: 1, fontFamily: 'serif', letterSpacing: '1px' }}>Las mejores propiedades en alquiler de Ecuador</Typography>
+            <Typography variant="h4" sx={{ fontWeight: 900, mb: 1, fontFamily: 'serif', letterSpacing: '0px' }}>Las mejores propiedades en alquiler de Ecuador</Typography>
+            <Typography variant="h6" sx={{ fontWeight: 500, mb: 1, fontFamily: 'serif', letterSpacing: '0px' }}>Descubra la casa en la que le encantará vivir en el portal líder en Propiedades e Inmuebles en alquiler de Ecuador</Typography>
             <Stack direction="row" justifyContent="center" spacing={0} sx={{ mb: -0.5, mt: 4 }}>
                 <Button onClick={() => setTipoOperacion("Venta")} sx={{ bgcolor: tipoOperacion === "Venta" ? 'white' : 'rgba(0,0,0,0.5)', color: tipoOperacion === "Venta" ? palette.titulos : 'white', px: 4, borderRadius: '8px 8px 0 0', fontWeight: 'bold' }}>Comprar</Button>
                 <Button onClick={() => setTipoOperacion("Alquiler")} sx={{ bgcolor: tipoOperacion === "Alquiler" ? 'white' : 'rgba(0,0,0,0.5)', color: tipoOperacion === "Alquiler" ? palette.titulos : 'white', px: 4, borderRadius: '8px 8px 0 0', fontWeight: 'bold' }}>Alquiler</Button>

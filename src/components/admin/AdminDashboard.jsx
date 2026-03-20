@@ -68,7 +68,7 @@ const AdminDashboard = () => {
     parqueaderos: "0", piso: "1", año_construccion: "2024", reglas: "", 
     incluye_agua: true, incluye_luz: true, incluye_internet: true, mascotas: false,
     fumar: false, ascensor: false, seguridad: false, gym: false, piscina: false,
-    latitud: "", longitud: "", calle_secundaria: "" // ✅ FUSIÓN: Agregada variable de Nathasha
+    latitud: "", longitud: "", calle_secundaria: "" 
   });
   
   const currentUser = authService.getCurrentUser();
@@ -185,6 +185,32 @@ const AdminDashboard = () => {
     }
   };
 
+  const toggleEstadoPropiedad = async (p) => {
+    const esOcupado = p.estado?.toLowerCase() === 'ocupado';
+    const nuevoEstado = esOcupado ? 'disponible' : 'ocupado';
+    try {
+      const dataToSend = {
+        ...p,
+        estado: nuevoEstado,
+        precio_mensual: parseFloat(p.precio_mensual) || 0,
+        garantia: parseFloat(p.garantia) || 0,
+        alicuota: parseFloat(p.alicuota) || 0,
+        habitaciones: parseInt(p.habitaciones) || 0,
+        banos: parseInt(p.banos) || 0,
+        parqueaderos: parseInt(p.parqueaderos) || 0,
+        metros_cuadrados: parseFloat(p.metros_cuadrados) || 0,
+        latitud: p.latitud ? parseFloat(p.latitud) : null,
+        longitud: p.longitud ? parseFloat(p.longitud) : null,
+      };
+
+      await axios.put(`${API_PROPIEDADES}/${p.id}`, dataToSend);
+      setAlerta({ open: true, mensaje: `✅ Propiedad marcada como ${nuevoEstado.toUpperCase()}`, severidad: "success" });
+      cargarDatos(); 
+    } catch (error) {
+      setAlerta({ open: true, mensaje: "❌ Error al cambiar el estado de la propiedad.", severidad: "error" });
+    }
+  };
+
   const handleMultipleImages = (e) => {
     const files = Array.from(e.target.files);
     files.forEach(file => {
@@ -202,7 +228,6 @@ const AdminDashboard = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      // ✅ FUSIÓN: Se agregan las funciones de Nathasha y las mías sin conflictos
       const dataToSend = {
         ...form,
         codigo: form.id ? form.codigo : `PROP-${Math.floor(Math.random() * 9000 + 1000)}`,
@@ -244,7 +269,7 @@ const AdminDashboard = () => {
     parqueaderos: "0", piso: "1", año_construccion: "2024", reglas: "",
     incluye_agua: true, incluye_luz: true, incluye_internet: true, mascotas: false,
     fumar: false, ascensor: false, seguridad: false, gym: false, piscina: false,
-    latitud: "", longitud: "", calle_secundaria: "" // ✅ FUSIÓN: Conservado de Nathasha
+    latitud: "", longitud: "", calle_secundaria: "" 
   });
 
   const handleConfirmarEliminar = (id) => {
@@ -278,6 +303,7 @@ const AdminDashboard = () => {
     const solicitud = solicitudes.find((s) => s.id === solicitud_id);
     if (!solicitud) return;
 
+    // Cédula por defecto para que no haya alertas negras
     const contratoData = {
       solicitud_id: solicitud.id,
       propiedad_id: solicitud.propiedad_id,
@@ -287,7 +313,7 @@ const AdminDashboard = () => {
       nombre_cliente: solicitud.nombre_cliente,
       nombre_propiedad: solicitud.sector_propiedad || "Departamento Lujoso",
       tipo_cliente: tipo,
-      cedula: "172XXXXXXX", 
+      cedula: "17XXXXXXXX", 
       estado_civil: "SOLTERO/A",
       nacionalidad: "ECUATORIANA",
       direccion_cliente: "Calle Principal y Av. Interoceánica",
@@ -300,6 +326,7 @@ const AdminDashboard = () => {
       const res = await axios.post("http://localhost:5000/api/contratos", contratoData);
       generarPDFContrato({ ...contratoData, id: res.data.id }, tipo);
       setAlerta({ open: true, mensaje: "✅ Contrato robusto generado", severidad: "success" });
+      cargarDatos(); 
     } catch (error) {
       setAlerta({ open: true, mensaje: "❌ Error al guardar en DB", severidad: "error" });
     }
@@ -313,16 +340,8 @@ const AdminDashboard = () => {
   return (
     <Box sx={{ display: "flex", bgcolor: palette.fondoPrincipal, minHeight: "100vh" }}>
       
-      <Snackbar 
-        open={alerta.open} 
-        autoHideDuration={4000} 
-        onClose={() => setAlerta({ ...alerta, open: false })}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
-      >
-        <Paper elevation={10} sx={{ 
-          bgcolor: alerta.severidad === "success" ? palette.titulos : "#d32f2f", 
-          color: "white", p: "12px 24px", borderRadius: "12px", display: 'flex', alignItems: 'center', gap: 2 
-        }}>
+      <Snackbar open={alerta.open} autoHideDuration={4000} onClose={() => setAlerta({ ...alerta, open: false })} anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}>
+        <Paper elevation={10} sx={{ bgcolor: alerta.severidad === "success" ? palette.titulos : "#d32f2f", color: "white", p: "12px 24px", borderRadius: "12px", display: 'flex', alignItems: 'center', gap: 2 }}>
           {alerta.severidad === "success" ? <CheckCircle /> : <ErrorOutline />}
           <Typography sx={{ fontWeight: 700 }}>{alerta.mensaje}</Typography>
         </Paper>
@@ -346,11 +365,7 @@ const AdminDashboard = () => {
           <IconButton onClick={() => setFotoComprobante(null)}><Close /></IconButton>
         </Box>
         <Box sx={{ textAlign: 'center' }}>
-          {fotoComprobante ? (
-            <img src={fotoComprobante} alt="Comprobante" style={{ width: '100%', maxHeight: '70vh', objectFit: 'contain', borderRadius: '8px' }} />
-          ) : (
-            <Typography>No hay imagen disponible</Typography>
-          )}
+          {fotoComprobante ? <img src={fotoComprobante} alt="Comprobante" style={{ width: '100%', maxHeight: '70vh', objectFit: 'contain', borderRadius: '8px' }} /> : <Typography>No hay imagen disponible</Typography>}
         </Box>
       </Dialog>
 
@@ -360,105 +375,42 @@ const AdminDashboard = () => {
           <IconButton onClick={() => setFotoMantenimiento(null)}><Close /></IconButton>
         </Box>
         <Box sx={{ textAlign: 'center' }}>
-          {fotoMantenimiento ? (
-            <img src={fotoMantenimiento} alt="Mantenimiento" style={{ width: '100%', maxHeight: '70vh', objectFit: 'contain', borderRadius: '8px' }} />
-          ) : (
-            <Typography>No se adjuntó imagen</Typography>
-          )}
+          {fotoMantenimiento ? <img src={fotoMantenimiento} alt="Mantenimiento" style={{ width: '100%', maxHeight: '70vh', objectFit: 'contain', borderRadius: '8px' }} /> : <Typography>No se adjuntó imagen</Typography>}
         </Box>
       </Dialog>
 
-      <Dialog 
-        open={!!previewProp} 
-        onClose={() => setPreviewProp(null)} 
-        maxWidth="md" 
-        fullWidth 
-        PaperProps={{ 
-          sx: { 
-            borderRadius: 4, 
-            overflow: 'hidden',
-            maxHeight: '90vh'
-          } 
-        }}
-      >
+      <Dialog open={!!previewProp} onClose={() => setPreviewProp(null)} maxWidth="md" fullWidth PaperProps={{ sx: { borderRadius: 4, overflow: 'hidden', maxHeight: '90vh' } }}>
         {previewProp && (
           <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, height: '100%' }}>
-            
             <Box sx={{ width: { xs: '100%', md: '50%' }, position: 'relative', bgcolor: '#000' }}>
-              <CardMedia 
-                component="img" 
-                image={previewProp.imagen_url || "https://via.placeholder.com/400"} 
-                sx={{ height: '100%', objectFit: 'cover' }} 
-              />
-              <Chip 
-                label="Vista Previa de Publicación" 
-                sx={{ position: 'absolute', top: 16, left: 16, bgcolor: palette.titulos, color: 'white', fontWeight: 'bold' }} 
-              />
+              <CardMedia component="img" image={previewProp.imagen_url || "https://via.placeholder.com/400"} sx={{ height: '100%', objectFit: 'cover' }} />
+              <Chip label="Vista Previa de Publicación" sx={{ position: 'absolute', top: 16, left: 16, bgcolor: palette.titulos, color: 'white', fontWeight: 'bold' }} />
             </Box>
-
-            <Box sx={{ 
-              p: 4, 
-              width: { xs: '100%', md: '50%' }, 
-              bgcolor: 'white',
-              overflowY: 'auto',
-              maxHeight: { md: '600px', xs: 'auto' } 
-            }}>
-              <Typography variant="h4" sx={{ fontWeight: 900, color: palette.titulos, fontFamily: 'serif', lineHeight: 1.2 }}>
-                {previewProp.sector}
-              </Typography>
-              
+            <Box sx={{ p: 4, width: { xs: '100%', md: '50%' }, bgcolor: 'white', overflowY: 'auto', maxHeight: { md: '600px', xs: 'auto' } }}>
+              <Typography variant="h4" sx={{ fontWeight: 900, color: palette.titulos, fontFamily: 'serif', lineHeight: 1.2 }}>{previewProp.sector}</Typography>
               <Stack direction="row" spacing={1} alignItems="center" sx={{ color: palette.textoSecundario, mt: 1, mb: 2 }}>
                 <LocationOn fontSize="small" />
                 <Typography variant="body2">{previewProp.ciudad}, Ecuador</Typography>
               </Stack>
-
-              <Typography variant="h3" sx={{ color: palette.botonPrincipal, fontWeight: 900, mb: 3 }}>
-                ${previewProp.precio_mensual}
-              </Typography>
-              
+              <Typography variant="h3" sx={{ color: palette.botonPrincipal, fontWeight: 900, mb: 3 }}>${previewProp.precio_mensual}</Typography>
               <Stack direction="row" spacing={3} sx={{ mb: 3, p: 2, bgcolor: palette.fondoAlterno, borderRadius: 2 }}>
-                <Stack direction="row" spacing={1} alignItems="center">
-                  <Bed sx={{ color: palette.detallesDorado }} />
-                  <Typography variant="body2" fontWeight="bold">{previewProp.habitaciones} Hab.</Typography>
-                </Stack>
-                <Stack direction="row" spacing={1} alignItems="center">
-                  <Bathtub sx={{ color: palette.detallesDorado }} />
-                  <Typography variant="body2" fontWeight="bold">{previewProp.banos} Baños</Typography>
-                </Stack>
+                <Stack direction="row" spacing={1} alignItems="center"><Bed sx={{ color: palette.detallesDorado }} /><Typography variant="body2" fontWeight="bold">{previewProp.habitaciones} Hab.</Typography></Stack>
+                <Stack direction="row" spacing={1} alignItems="center"><Bathtub sx={{ color: palette.detallesDorado }} /><Typography variant="body2" fontWeight="bold">{previewProp.banos} Baños</Typography></Stack>
               </Stack>
-
-              <Typography variant="subtitle2" sx={{ fontWeight: 'bold', color: palette.titulos, mb: 1 }}>
-                Descripción:
-              </Typography>
-              <Typography variant="body2" sx={{ color: '#555', mb: 3, lineHeight: 1.6 }}>
-                {previewProp.descripcion}
-              </Typography>
-              
+              <Typography variant="subtitle2" sx={{ fontWeight: 'bold', color: palette.titulos, mb: 1 }}>Descripción:</Typography>
+              <Typography variant="body2" sx={{ color: '#555', mb: 3, lineHeight: 1.6 }}>{previewProp.descripcion}</Typography>
               {previewProp.reglas && (
                 <Box sx={{ mb: 3, p: 2, borderLeft: `4px solid ${palette.detallesDorado}`, bgcolor: '#fffde7', borderRadius: '0 8px 8px 0' }}>
-                  <Typography variant="caption" sx={{ fontWeight: 'bold', color: palette.titulos, display: 'flex', alignItems: 'center', gap: 1, textTransform: 'uppercase', mb: 0.5 }}>
-                    <Gavel sx={{ fontSize: 16 }} /> Reglas y Convivencia:
-                  </Typography>
-                  <Typography variant="body2" sx={{ color: '#555' }}>
-                    {previewProp.reglas}
-                  </Typography>
+                  <Typography variant="caption" sx={{ fontWeight: 'bold', color: palette.titulos, display: 'flex', alignItems: 'center', gap: 1, textTransform: 'uppercase', mb: 0.5 }}><Gavel sx={{ fontSize: 16 }} /> Reglas y Convivencia:</Typography>
+                  <Typography variant="body2" sx={{ color: '#555' }}>{previewProp.reglas}</Typography>
                 </Box>
               )}
-
-              <Typography variant="subtitle2" sx={{ fontWeight: 'bold', color: palette.titulos, mb: 1 }}>
-                Servicios Incluidos:
-              </Typography>
+              <Typography variant="subtitle2" sx={{ fontWeight: 'bold', color: palette.titulos, mb: 1 }}>Servicios Incluidos:</Typography>
               <Stack direction="row" spacing={1} flexWrap="wrap" gap={1} sx={{ mb: 2 }}>
                 {previewProp.incluye_agua && <Chip label="Agua" size="small" variant="outlined" color="primary" />}
                 {previewProp.incluye_internet && <Chip label="WiFi" size="small" variant="outlined" color="success" />}
                 {previewProp.mascotas && <Chip label="Mascotas ok" size="small" variant="outlined" color="secondary" />}
               </Stack>
-
-              <Divider sx={{ my: 3 }} />
-              
-              <Typography variant="caption" color="textSecondary" textAlign="center" display="block">
-                Fin de la vista previa. Así es como los inquilinos verán tu anuncio.
-              </Typography>
             </Box>
           </Box>
         )}
@@ -538,24 +490,56 @@ const AdminDashboard = () => {
 
         {aseccion === "mis-departamentos" && (
           <Grid container spacing={4}>
-            {propiedadesFiltradas.map((p) => (
-              <Grid item size={{ xs: 12, md: 4 }} key={p.id}>
-                <Card sx={{ borderRadius: 2, border: `1px solid ${palette.textoSecundario}33`, boxShadow: 3, position: 'relative' }}>
-                  <CardMedia component="img" height="220" image={p.imagen_url || "https://via.placeholder.com/400"} />
-                  <IconButton onClick={() => setPreviewProp(p)} sx={{ position: 'absolute', top: 10, right: 10, bgcolor: 'rgba(255,255,255,0.8)', '&:hover': { bgcolor: 'white' } }}>
-                    <Visibility color="primary" />
-                  </IconButton>
-                  <CardContent sx={{ p: 3 }}>
-                    <Typography variant="h6" sx={{ fontWeight: 700, color: palette.titulos }}>{p.sector}</Typography>
-                    <Typography variant="h5" color={palette.botonPrincipal} sx={{ fontWeight: 900, my: 1 }}>${p.precio_mensual}</Typography>
-                    <Stack direction="row" spacing={1} mt={3}>
-                      <Button fullWidth variant="outlined" startIcon={<Edit />} onClick={() => prepararEdicion(p)} sx={{ borderRadius: 2, textTransform: 'none', fontWeight: 600 }}>Editar</Button>
-                      <Button fullWidth variant="outlined" color="error" startIcon={<Delete />} onClick={() => handleConfirmarEliminar(p.id)} sx={{ borderRadius: 2, textTransform: 'none', fontWeight: 600 }}>Borrar</Button>
-                    </Stack>
-                  </CardContent>
-                </Card>
-              </Grid>
-            ))}
+            {propiedadesFiltradas.map((p) => {
+              const esOcupado = p.estado?.toLowerCase() === 'ocupado';
+              return (
+                <Grid item size={{ xs: 12, md: 4 }} key={p.id}>
+                  <Card sx={{ borderRadius: 2, border: `1px solid ${palette.textoSecundario}33`, boxShadow: 3, position: 'relative' }}>
+                    
+                    <Box sx={{ position: 'absolute', top: 10, left: 10, zIndex: 2 }}>
+                      <Chip 
+                        label={esOcupado ? 'OCUPADO' : 'DISPONIBLE'} 
+                        size="small" 
+                        sx={{ 
+                          bgcolor: esOcupado ? '#d32f2f' : '#2e7d32', 
+                          color: 'white', fontWeight: 'bold', boxShadow: 2 
+                        }} 
+                      />
+                    </Box>
+
+                    <CardMedia component="img" height="220" image={p.imagen_url || "https://via.placeholder.com/400"} />
+                    <IconButton onClick={() => setPreviewProp(p)} sx={{ position: 'absolute', top: 10, right: 10, bgcolor: 'rgba(255,255,255,0.8)', '&:hover': { bgcolor: 'white' } }}>
+                      <Visibility color="primary" />
+                    </IconButton>
+                    <CardContent sx={{ p: 3 }}>
+                      <Typography variant="h6" sx={{ fontWeight: 700, color: palette.titulos }}>{p.sector}</Typography>
+                      <Typography variant="h5" color={palette.botonPrincipal} sx={{ fontWeight: 900, my: 1 }}>${p.precio_mensual}</Typography>
+                      
+                      <Box mt={2}>
+                        <Button 
+                          fullWidth 
+                          variant="contained" 
+                          onClick={() => toggleEstadoPropiedad(p)} 
+                          sx={{ 
+                            mb: 1.5, borderRadius: 2, textTransform: 'none', fontWeight: 600,
+                            bgcolor: esOcupado ? '#2e7d32' : '#757575',
+                            '&:hover': { bgcolor: esOcupado ? '#1b5e20' : '#424242' }
+                          }}
+                        >
+                          {esOcupado ? 'Marcar como Disponible' : 'Marcar como Ocupado'}
+                        </Button>
+                        
+                        <Stack direction="row" spacing={1}>
+                          <Button fullWidth variant="outlined" startIcon={<Edit />} onClick={() => prepararEdicion(p)} sx={{ borderRadius: 2, textTransform: 'none', fontWeight: 600 }}>Editar</Button>
+                          <Button fullWidth variant="outlined" color="error" startIcon={<Delete />} onClick={() => handleConfirmarEliminar(p.id)} sx={{ borderRadius: 2, textTransform: 'none', fontWeight: 600 }}>Borrar</Button>
+                        </Stack>
+                      </Box>
+
+                    </CardContent>
+                  </Card>
+                </Grid>
+              );
+            })}
           </Grid>
         )}
 
@@ -926,7 +910,6 @@ const AdminDashboard = () => {
         {aseccion === "mantenimiento" && (
           <Container maxWidth="lg">
             <Typography variant="h4" sx={{ fontWeight: 900, mb: 4, color: palette.titulos }}>Reportes de Mantenimiento </Typography>
-            
             <TableContainer component={Paper} sx={{ borderRadius: "15px", boxShadow: "0 4px 20px rgba(0,0,0,0.05)" }}>
               <Table>
                 <TableHead sx={{ bgcolor: palette.fondoAlterno }}>
