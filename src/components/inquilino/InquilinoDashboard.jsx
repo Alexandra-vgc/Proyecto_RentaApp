@@ -115,9 +115,12 @@ function InquilinoDashboard() {
             <DescriptionIcon className="icon" /> Gestión Contrato
           </button>
           
-          <button className={`sidebar-item ${activeTab === 'mantenimiento' ? 'active' : ''}`} onClick={() => setActiveTab('mantenimiento')}>
-            <BuildIcon className="icon" /> Mantenimiento
-          </button>
+          {/* ✅ MURO DE CONTENCIÓN: Solo el inquilino ve Mantenimiento */}
+          {!esComprador && (
+            <button className={`sidebar-item ${activeTab === 'mantenimiento' ? 'active' : ''}`} onClick={() => setActiveTab('mantenimiento')}>
+              <BuildIcon className="icon" /> Mantenimiento
+            </button>
+          )}
 
           <button className={`sidebar-item ${activeTab === 'pagos' ? 'active' : ''}`} onClick={() => setActiveTab('pagos')}>
             <PaymentsIcon className="icon" /> Historial de Pagos
@@ -147,12 +150,12 @@ function InquilinoDashboard() {
                 </div>
               ) : (
                 <>
-                  {/* TARJETAS CON ICONOS MODERNOS */}
+                  {/* ✅ TARJETAS CON TEXTOS OSCURECIDOS PARA MAYOR NITIDEZ */}
                   <div className="stats-grid">
                     <div className="stat-card modern-card">
                       <div className="stat-icon-wrapper" style={{color: '#4E5B3C', backgroundColor: '#F5EFE6'}}><ApartmentIcon fontSize="large" /></div>
                       <div className="stat-info">
-                        <span className="stat-label" style={{ fontFamily: fontGlobal }}>Inmueble Actual</span>
+                        <span className="stat-label" style={{ fontFamily: fontGlobal, color: '#555', fontWeight: 'bold', letterSpacing: '0.5px' }}>Inmueble Actual</span>
                         <h4 className="stat-value" style={{ fontFamily: fontGlobal, fontWeight: 800 }}>{dashboardData?.contrato?.codigo || '---'}</h4>
                       </div>
                     </div>
@@ -160,7 +163,7 @@ function InquilinoDashboard() {
                     <div className="stat-card modern-card">
                       <div className="stat-icon-wrapper" style={{color: '#2e7d32', backgroundColor: '#e8f5e9'}}><AttachMoneyIcon fontSize="large" /></div>
                       <div className="stat-info">
-                        <span className="stat-label" style={{ fontFamily: fontGlobal }}>{labelPago}</span>
+                        <span className="stat-label" style={{ fontFamily: fontGlobal, color: '#555', fontWeight: 'bold', letterSpacing: '0.5px' }}>{labelPago}</span>
                         <h4 className="stat-value" style={{ fontFamily: fontGlobal, fontWeight: 800 }}>${dashboardData?.contrato?.monto_mensual || '0.00'}</h4>
                       </div>
                     </div>
@@ -168,22 +171,23 @@ function InquilinoDashboard() {
                     <div className="stat-card modern-card">
                       <div className="stat-icon-wrapper" style={{color: stats.cuotasPendientes > 0 ? '#d32f2f' : '#1976d2', backgroundColor: stats.cuotasPendientes > 0 ? '#ffebee' : '#e3f2fd'}}><AccessTimeIcon fontSize="large" /></div>
                       <div className="stat-info">
-                        <span className="stat-label" style={{ fontFamily: fontGlobal }}>{labelPendientes}</span>
+                        <span className="stat-label" style={{ fontFamily: fontGlobal, color: '#555', fontWeight: 'bold', letterSpacing: '0.5px' }}>{labelPendientes}</span>
                         <h4 className="stat-value" style={{ fontFamily: fontGlobal, fontWeight: 800 }}>{stats.cuotasPendientes || 0}</h4>
                       </div>
                     </div>
                   </div>
 
                   {esComprador && (
-                    <div className="progress-section">
-                      <h3 style={{ fontFamily: fontGlobal, fontWeight: 'bold' }}>Gráfico de Progreso de Compra</h3>
-                      <div className="progress-bar-bg">
-                        <div className="progress-bar-fill" style={{ width: `${stats.porcentajeProgreso}%` }}></div>
+                    <div className="progress-section" style={{ backgroundColor: '#fff', padding: '25px', borderRadius: '12px', boxShadow: '0 4px 15px rgba(0,0,0,0.05)', marginBottom: '30px' }}>
+                      <h3 style={{ fontFamily: fontGlobal, fontWeight: 'bold', color: '#4E5B3C', marginTop: 0 }}>Progreso de Compra Inmobiliaria</h3>
+                      <div className="progress-bar-bg" style={{ backgroundColor: '#F5EFE6', height: '20px', borderRadius: '10px', overflow: 'hidden', margin: '15px 0' }}>
+                        <div className="progress-bar-fill" style={{ width: `${stats.porcentajeProgreso}%`, backgroundColor: '#C66A3D', height: '100%', transition: 'width 1s ease-in-out' }}></div>
                       </div>
-                      <div className="progress-details" style={{ fontFamily: fontGlobal }}>
-                        <span>Capital Abonado: <strong>${stats.totalAbonado?.toFixed(2)}</strong></span>
-                        <span>Saldo Restante: <strong>${stats.saldoPendiente?.toFixed(2)}</strong></span>
-                        <span style={{color: '#C66A3D', fontWeight: 'bold'}}>{stats.porcentajeProgreso}% Completado</span>
+                      <div className="progress-details" style={{ fontFamily: fontGlobal, display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px' }}>
+                        <span style={{color: '#666'}}>Total Propiedad: <strong style={{color: '#444'}}>${stats.precioTotal?.toFixed(2) || '0.00'}</strong></span>
+                        <span style={{color: '#666'}}>Capital Abonado: <strong style={{color: '#2e7d32'}}>${stats.totalAbonado?.toFixed(2)}</strong></span>
+                        <span style={{color: '#666'}}>Saldo Restante: <strong style={{color: '#d32f2f'}}>${stats.saldoPendiente?.toFixed(2)}</strong></span>
+                        <span style={{color: '#C66A3D', fontWeight: 'bold', backgroundColor: '#F5EFE6', padding: '2px 10px', borderRadius: '15px'}}>{stats.porcentajeProgreso}% Completado</span>
                       </div>
                     </div>
                   )}
@@ -191,14 +195,14 @@ function InquilinoDashboard() {
                   {/* LÓGICA DE ALERTAS */}
                   {dashboardData?.proximoPago ? (
                     dashboardData.proximoPago.estado === 'pendiente' ? (
-                      <div className="alert-section" style={{ backgroundColor: '#fffde7', border: '1px solid #fff59d', borderLeft: '6px solid #fbc02d' }}>
+                      <div className="alert-section" style={{ backgroundColor: '#fffde7', border: '1px solid #fff59d', borderLeft: '6px solid #fbc02d', padding: '20px', borderRadius: '8px' }}>
                         <div className="alert-content">
                           <h3 style={{margin: '0 0 5px 0', color: '#f57f17', fontFamily: fontGlobal, fontWeight: 'bold'}}>⏳ Pago en Revisión</h3>
                           <p style={{margin: 0, color: '#555', fontFamily: fontGlobal}}>Tu pago por <strong>${dashboardData.proximoPago.monto}</strong> correspondiente a <strong>{dashboardData.proximoPago.mes}</strong> está siendo revisado.</p>
                         </div>
                       </div>
                     ) : (
-                      <div className="alert-section" style={{ backgroundColor: '#ffebee', border: '1px solid #ffcdd2', borderLeft: '6px solid #d32f2f' }}>
+                      <div className="alert-section" style={{ backgroundColor: '#ffebee', border: '1px solid #ffcdd2', borderLeft: '6px solid #d32f2f', padding: '20px', borderRadius: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <div className="alert-content" style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
                           <WarningAmberIcon style={{ color: '#c62828', fontSize: '2.5rem' }} />
                           <div>
@@ -206,11 +210,11 @@ function InquilinoDashboard() {
                             <p style={{margin: 0, color: '#555', fontFamily: fontGlobal}}>Tienes una cuota pendiente de <strong>${dashboardData.proximoPago.monto}</strong> correspondiente a <strong>{dashboardData.proximoPago.mes}</strong>.</p>
                           </div>
                         </div>
-                        <button className="btn-pay-now" onClick={() => setShowRegistrarPago(true)}>Pagar Ahora</button>
+                        <button className="btn-pay-now" onClick={() => setShowRegistrarPago(true)} style={{backgroundColor: '#d32f2f', color: 'white', border: 'none', padding: '10px 20px', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer'}}>Pagar Ahora</button>
                       </div>
                     )
                   ) : (
-                    <div className="alert-section" style={{ backgroundColor: '#e8f5e9', border: '1px solid #c8e6c9', borderLeft: '6px solid #2e7d32' }}>
+                    <div className="alert-section" style={{ backgroundColor: '#e8f5e9', border: '1px solid #c8e6c9', borderLeft: '6px solid #2e7d32', padding: '20px', borderRadius: '8px' }}>
                         <div className="alert-content">
                           <h3 style={{margin: '0 0 5px 0', color: '#2e7d32', fontFamily: fontGlobal, fontWeight: 'bold'}}>✅ ¡Estás al día!</h3>
                           <p style={{margin: 0, color: '#555', fontFamily: fontGlobal}}>No tienes pagos pendientes en este momento. Gracias por tu puntualidad.</p>
@@ -224,16 +228,55 @@ function InquilinoDashboard() {
 
           {activeTab === 'departamento' && <MiDepartamento />}
           {activeTab === 'contrato' && <MiContrato />}
-          {activeTab === 'mantenimiento' && <Mantenimiento />}
+          
+          {/* MURO DE CONTENCIÓN: Solo renderiza mantenimiento si NO es comprador */}
+          {!esComprador && activeTab === 'mantenimiento' && <Mantenimiento />}
+          
           {activeTab === 'pagos' && <MisPagos onRecargar={cargarDashboard} />}
           {activeTab === 'perfil' && <MiPerfil />}
         </main>
       </div>
       
-      {tieneContrato && (
-        <button className="btn-fab" onClick={() => setShowRegistrarPago(true)} title={`Registrar ${esComprador ? 'Cuota' : 'Pago'}`}>
-          💰
-        </button>
+      {/* SE QUITA EL BOTÓN SI ESTAMOS EN LA PESTAÑA 'PAGOS' PARA EVITAR QUE SE DUPLIQUE */}
+      {tieneContrato && activeTab !== 'pagos' && (
+        <div style={{ position: 'fixed', bottom: '40px', right: '40px', display: 'flex', flexDirection: 'column', alignItems: 'center', zIndex: 100 }}>
+          <button 
+            onClick={() => setShowRegistrarPago(true)}
+            style={{
+              width: '60px',
+              height: '60px',
+              borderRadius: '50%',
+              backgroundColor: '#C66A3D',
+              color: 'white',
+              fontSize: '24px',
+              border: 'none',
+              boxShadow: '0 4px 15px rgba(198, 106, 61, 0.4)',
+              cursor: 'pointer',
+              display: 'flex',
+              justifyContent: 'center',
+              alignItems: 'center',
+              transition: 'transform 0.2s',
+              marginBottom: '8px'
+            }}
+            onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.1)'}
+            onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
+            title={`Registrar ${esComprador ? 'Cuota' : 'Pago'}`}
+          >
+            💰
+          </button>
+          <span style={{ 
+            backgroundColor: '#F5EFE6', 
+            color: '#C66A3D', 
+            fontWeight: '900', 
+            fontSize: '0.85rem', 
+            padding: '4px 12px', 
+            borderRadius: '12px', 
+            boxShadow: '0 2px 5px rgba(0,0,0,0.1)',
+            border: '1px solid #E8DCCB'
+          }}>
+            Paga aquí
+          </span>
+        </div>
       )}
 
       {showRegistrarPago && (

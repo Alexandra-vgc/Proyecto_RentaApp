@@ -53,9 +53,10 @@ const ensureClientData = async (email, nombreCompleto, tipo_cliente) => {
   } else {
     const compRes = await pool.query('SELECT id FROM compradores WHERE email = $1', [email]);
     if (compRes.rows.length === 0) {
+      // ✅ SOLUCIÓN: Agregada la columna "cedula" y el valor "cedulaUnica" para los compradores
       await pool.query(
-        `INSERT INTO compradores (id, nombre, apellido, email, telefono) VALUES ($1, $2, $3, $4, $5)`,
-        [usuarioId, nombre, apellido, email, '0900000000']
+        `INSERT INTO compradores (id, nombre, apellido, cedula, email, telefono) VALUES ($1, $2, $3, $4, $5, $6)`,
+        [usuarioId, nombre, apellido, cedulaUnica, email, '0900000000']
       );
       clienteId = usuarioId;
     } else {
@@ -86,7 +87,6 @@ export const crear = async (req, res) => {
     const esComprador = tipo_cliente === 'comprador';
     const tituloModo = esComprador ? "Contrato de Compraventa" : "Contrato de Arrendamiento";
     
-    // ✅ CORRECCIÓN MÁGICA: Le quitamos el "await" para que no bloquee tu sistema si Gmail falla.
     sendMail({
       to: correo_cliente,
       subject: `🔑 Credenciales de Acceso - ${tituloModo}`,
@@ -115,7 +115,6 @@ export const crear = async (req, res) => {
     }).then(() => console.log(`✅ Correo de enviado a: ${correo_cliente}`))
       .catch((e) => console.log(`⚠️ El contrato se guardó, pero Gmail bloqueó el correo: ${e.message}`));
 
-    // Respondemos Inmediatamente para que el contrato se asigne con éxito
     return res.status(201).json(result.rows[0]);
   } catch (error) {
     console.error("❌ Error en crear contrato:", error.message);

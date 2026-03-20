@@ -26,7 +26,6 @@ function MiPerfil() {
         headers: { Authorization: `Bearer ${token}` }
       });
       
-      // ✅ CORRECCIÓN CLAVE: Si el backend envía "null", forzamos el uso de datos locales
       if (response.data) {
         setPerfil(response.data);
         setFormData(response.data);
@@ -84,7 +83,6 @@ function MiPerfil() {
     setErrorMsg(null);
   };
 
-  // ✅ CORRECCIÓN CLAVE 2: Validamos que perfil no sea null antes de mostrar la pantalla
   if (loading || !perfil) {
     return (
       <div style={{ textAlign: 'center', padding: '80px 0', color: 'var(--color-primario)' }}>
@@ -106,14 +104,12 @@ function MiPerfil() {
   return (
     <div style={{ maxWidth: '900px', margin: '0 auto' }}>
       
-      {/* MENSAJE DE ÉXITO */}
       {mensajeExito && (
         <div style={{ background: '#e8f5e9', color: '#2e7d32', border: '1px solid #a5d6a7', borderRadius: '12px', padding: '14px 20px', marginBottom: '20px', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '10px' }}>
           <span>✅</span> {mensajeExito}
         </div>
       )}
 
-      {/* MENSAJE DE ERROR */}
       {errorMsg && (
         <div style={{ background: '#ffebee', color: '#c62828', border: '1px solid #ffcdd2', borderRadius: '12px', padding: '14px 20px', marginBottom: '20px', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '10px' }}>
           <span>⚠️</span> {errorMsg}
@@ -140,11 +136,13 @@ function MiPerfil() {
           {perfil.nombre} {perfil.apellido}
         </h2>
         
-        <p style={{ margin: '0 0 15px', color: 'var(--texto-secundario)', fontSize: '16px' }}>
+        {/* ✅ EMAIL MÁS NÍTIDO Y OSCURO */}
+        <p style={{ margin: '0 0 15px', color: '#555', fontSize: '17px', fontWeight: '500' }}>
           {perfil.email}
         </p>
         
-        <span style={{ display: 'inline-block', padding: '6px 20px', backgroundColor: 'var(--fondo-principal)', color: 'var(--color-primario)', borderRadius: '20px', fontSize: '14px', fontWeight: 'bold', border: '1px solid var(--lineas-bordes)' }}>
+        {/* ✅ ETIQUETA "INQUILINO/COMPRADOR" MÁS NÍTIDA Y OSCURA */}
+        <span style={{ display: 'inline-block', padding: '6px 20px', backgroundColor: '#F5EFE6', color: '#4E5B3C', borderRadius: '20px', fontSize: '15px', fontWeight: '800', border: '1px solid #BFA58A' }}>
           {authService.getTipoUsuario() === 'comprador' ? 'Comprador' : 'Inquilino'}
         </span>
       </div>
@@ -161,7 +159,7 @@ function MiPerfil() {
               </button>
             ) : (
               <>
-                <button onClick={handleCancelEdit} style={{ padding: '10px 20px', background: 'transparent', color: 'var(--texto-secundario)', border: '2px solid var(--lineas-bordes)', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', transition: 'all 0.2s' }}>
+                <button onClick={handleCancelEdit} style={{ padding: '10px 20px', background: 'transparent', color: '#555', border: '2px solid #555', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', transition: 'all 0.2s' }}>
                   Cancelar
                 </button>
                 <button onClick={handleGuardar} disabled={saving} style={{ padding: '10px 24px', background: saving ? '#ccc' : '#2e7d32', color: 'white', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: saving ? 'not-allowed' : 'pointer', boxShadow: '0 4px 10px rgba(46,125,50,0.3)', transition: 'transform 0.2s' }}>
@@ -187,7 +185,7 @@ function MiPerfil() {
                   {campo.label}
                 </label>
                 {campo.disabled && editMode && (
-                  <span style={{ fontSize: '11px', color: 'var(--texto-secundario)', marginLeft: 'auto', fontStyle: 'italic' }}>No editable</span>
+                  <span style={{ fontSize: '11px', color: '#888', marginLeft: 'auto', fontStyle: 'italic', fontWeight: 'bold' }}>No editable</span>
                 )}
               </div>
 
@@ -211,7 +209,8 @@ function MiPerfil() {
                   onBlur={e => { e.target.style.borderColor = 'var(--lineas-bordes)'; e.target.style.boxShadow = 'none'; }}
                 />
               ) : (
-                <p style={{ margin: 0, color: perfil[campo.key] ? 'var(--texto-oscuro)' : 'var(--texto-secundario)', fontSize: '17px', fontWeight: 'bold' }}>
+                // ✅ VALORES DE LOS CAMPOS MÁS OSCUROS Y NÍTIDOS
+                <p style={{ margin: 0, color: perfil[campo.key] ? '#333' : '#888', fontSize: '17px', fontWeight: 'bold' }}>
                   {perfil[campo.key] || '---'}
                 </p>
               )}
@@ -220,7 +219,8 @@ function MiPerfil() {
         </div>
       </div>
 
-      <p style={{ textAlign: 'center', color: 'var(--texto-secundario)', fontSize: '14px', marginTop: '30px', fontStyle: 'italic' }}>
+      {/* ✅ TEXTO INFERIOR MÁS OSCURO Y EN NEGRITA */}
+      <p style={{ textAlign: 'center', color: '#555', fontSize: '14px', marginTop: '30px', fontStyle: 'italic', fontWeight: '600' }}>
         Si necesitas actualizar tu correo electrónico o tipo de cuenta, por favor contacta a la administración.
       </p>
     </div>

@@ -109,9 +109,8 @@ function Login() {
         {/* La 'X' de cerrar en la esquina superior */}
         <Link to="/" style={{ position: 'absolute', top: '15px', right: '20px', color: 'white', textDecoration: 'none', fontSize: '1.2rem', fontWeight: 'bold' }}>×</Link>
 
-        <h2>LOGIN</h2>
+        <h2>Iniciar Sesión</h2>
         <p className="subtitle">
-          {vistaActual === 'login' && 'Ingresa a tu cuenta'}
           {vistaActual === 'pedir-correo' && 'Recupera tu acceso'}
           {vistaActual === 'ingresar-codigo' && 'Revisa tu bandeja de entrada'}
           {vistaActual === 'nueva-clave' && 'Crea una contraseña segura'}

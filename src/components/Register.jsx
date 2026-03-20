@@ -27,6 +27,7 @@ function Register() {
     setError('');
   };
 
+  // ✅ TU LÓGICA DE SEGURIDAD INTACTA
   const validarPassword = (password) => {
     const regex = /^(?=.*[A-Za-z])(?=.*\d)(?=.*[@$!%*#?&.])[A-Za-z\d@$!%*#?&.]{8,}$/;
     return regex.test(password);
@@ -130,6 +131,9 @@ function Register() {
                 value={formData.password}
                 onChange={handleChange}
                 required
+                minLength={8} /* ✅ NUEVO DOBLE CANDADO: El navegador bloquea si tiene menos de 8 */
+                pattern="^(?=.*[A-Za-z])(?=.*\d)(?=.*[@$!%*#?&.])[A-Za-z\d@$!%*#?&.]{8,}$" /* ✅ NUEVO DOBLE CANDADO: El navegador exige letras y símbolos */
+                title="Debe tener mínimo 8 caracteres, incluir letras, números y un carácter especial (@$!%*#?&.)"
               />
               <small style={{ color: '#888', fontSize: '0.8rem', marginTop: '4px', display: 'block' }}>
                 Mín. 8 caracteres, números y un símbolo.
@@ -146,6 +150,7 @@ function Register() {
                 value={formData.confirmPassword}
                 onChange={handleChange}
                 required
+                minLength={8} /* ✅ NUEVO DOBLE CANDADO */
               />
             </div>
 

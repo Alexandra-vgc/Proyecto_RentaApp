@@ -2,12 +2,13 @@ import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import axios from "axios";
 import authService from "../services/authService"; 
+import MapaInteractiva from "../components/admin/MapaInteractiva";
 import { 
   Box, Container, Typography, Button, Grid, Paper, Stack, Divider, 
   CircularProgress, Dialog, DialogTitle, DialogContent, TextField, DialogActions,
   List, ListItem, Chip, IconButton
 } from "@mui/material";
-import { ArrowBack, Event, LocationOn, Info, Favorite, FavoriteBorder } from "@mui/icons-material";
+import { ArrowBack, Event, LocationOn, Info, Favorite, FavoriteBorder, Map } from "@mui/icons-material";
 
 const palette = { 
   fondoPrincipal: "#E8DCCB", 
@@ -56,7 +57,7 @@ export default function PropertyDetail() {
     };
     
     if (id) fetchData();
-  }, [id, isUserLogged, currentUser?.id]); // ✅ DEPENDENCIAS SEGURAS (YA NO PARPADEA)
+  }, [id, isUserLogged, currentUser?.id]); // ✅ DEPENDENCIAS SEGURAS
 
   const toggleFavorito = async () => {
     if (!isUserLogged) {
@@ -109,6 +110,7 @@ export default function PropertyDetail() {
         </Button>
 
         <Grid container spacing={3}>
+          {/* COLUMNA IZQUIERDA: IMAGEN, CARRUSEL, DESCRIPCIÓN, REGLAS */}
           <Grid item xs={12} md={7}>
             <Paper elevation={0} sx={{ borderRadius: 2, overflow: 'hidden', mb: 2, border: '1px solid #ddd' }}>
               <img src={allImages[activeImg]} style={{ width: '100%', height: '480px', objectFit: 'cover' }} alt="principal" />
@@ -145,10 +147,11 @@ export default function PropertyDetail() {
             </Paper>
           </Grid>
 
+          {/* COLUMNA DERECHA: INFO PRINCIPAL, DETALLES TÉCNICOS, MAPA Y BOTÓN */}
           <Grid item xs={12} md={5}>
+            {/* CARD DE PRECIO Y TITULO (Con tu botón de favoritos) */}
             <Paper elevation={0} sx={{ p: 4, bgcolor: 'white', borderRadius: 2, mb: 3, border: '1px solid #eee', position: 'relative' }}>
               
-              {/* ✅ BOTÓN DE FAVORITO ARREGLADO */}
               <IconButton 
                 onClick={toggleFavorito}
                 sx={{ 
@@ -176,6 +179,7 @@ export default function PropertyDetail() {
               </Typography>
             </Paper>
 
+            {/* CARD DE DETALLES TÉCNICOS */}
             <Paper elevation={0} sx={{ bgcolor: 'white', p: 1, borderRadius: 2, border: '1px solid #eee' }}>
               <List disablePadding>
                 {[
@@ -196,6 +200,19 @@ export default function PropertyDetail() {
               </List>
             </Paper>
 
+            {/* ✅ AQUÍ RE-INTEGRAMOS EL MAPA SEGÚN NATHASHA (ARRIBA DEL BOTÓN AGENDAR) */}
+            <Paper elevation={0} sx={{ p: 3, borderRadius: 2, border: '1px solid #eee', bgcolor: 'white', mt: 3, mb: 1 }}>
+              <Typography variant="h6" sx={{ fontWeight: 900, color: '#2c3e50', mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
+                <Map sx={{ color: palette.botonPrincipal }} /> Ubicación
+              </Typography>
+              <MapaInteractiva 
+                lat={property.lat || property.latitud} 
+                lng={property.lng || property.longitud} 
+                soloLectura={true} 
+              />
+            </Paper>
+
+            {/* BOTÓN DE AGENDAR (Al final de la columna derecha) */}
             <Button 
               variant="contained" fullWidth startIcon={<Event />} onClick={handleOpenCita}
               sx={{ bgcolor: palette.botonPrincipal, mt: 3, py: 2, fontWeight: 'bold', borderRadius: 2, textTransform: 'none' }}

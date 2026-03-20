@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import jsPDF from "jspdf";
 import authService from "../../services/authService";
 import { generarPDFContrato } from "./contratos/ModuloContratos";
+import MapaInteractiva from "./MapaInteractiva";
 
 import {
   Box, Drawer, List, ListItemButton, ListItemIcon, ListItemText, AppBar,
@@ -21,7 +22,7 @@ import {
   AttachMoney, Straighten, Hotel, Bathtub, Business, Rule, Info,
   Dashboard as DashboardIcon, WbSunny, TrendingUp, Apartment, EventNote,
   ErrorOutline, WarningAmber, Visibility, Bed, VerifiedUser, Gavel,
-  Payments, Check, Close, InsertPhoto, Build // ✅ Icono agregado para Mantenimiento
+  Payments, Check, Close, InsertPhoto, Build 
 } from "@mui/icons-material";
 
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
@@ -50,11 +51,13 @@ const AdminDashboard = () => {
   const [confirmarEliminar, setConfirmarEliminar] = useState({ open: false, id: null });
   const [previewProp, setPreviewProp] = useState(null);
 
-  // ✅ ESTADOS NUEVOS PARA PAGOS
+  // ESTADOS PARA PAGOS
   const [pagosAdmin, setPagosAdmin] = useState([]); 
   const [fotoComprobante, setFotoComprobante] = useState(null); 
+  const [filtroPagosAdmin, setFiltroPagosAdmin] = useState('todos'); 
+  const [busquedaPagos, setBusquedaPagos] = useState(""); // ✅ NUEVO: ESTADO PARA LA BARRA DE BÚSQUEDA DE PAGOS
 
-  // ✅ ESTADOS NUEVOS PARA MANTENIMIENTO (Añadido sin borrar nada)
+  // ESTADOS PARA MANTENIMIENTO
   const [mantenimientosAdmin, setMantenimientosAdmin] = useState([]);
   const [fotoMantenimiento, setFotoMantenimiento] = useState(null);
 
@@ -63,8 +66,9 @@ const AdminDashboard = () => {
     banos: "", metros_cuadrados: "", descripcion: "", imagen_url: "", imagenes_extra: [],
     tipo_propiedad: "Departamento", estado_amoblado: "Vacío", garantia: "", alicuota: "",
     parqueaderos: "0", piso: "1", año_construccion: "2024", reglas: "", 
-    incluye_agua: false, incluye_luz: false, incluye_internet: false, mascotas: false,
-    fumar: false, ascensor: false, seguridad: false, gym: false, piscina: false
+    incluye_agua: true, incluye_luz: true, incluye_internet: true, mascotas: false,
+    fumar: false, ascensor: false, seguridad: false, gym: false, piscina: false,
+    latitud: "", longitud: "" 
   });
   
   const currentUser = authService.getCurrentUser();
@@ -73,14 +77,14 @@ const AdminDashboard = () => {
   const API_PROPIEDADES = "http://localhost:5000/api/admin/propiedades";
   const API_SOLICITUDES = `http://localhost:5000/api/solicitudes/propietario/${userId}`;
   const API_PAGOS = "http://localhost:5000/api/admin/pagos"; 
-  const API_MANTENIMIENTOS = "http://localhost:5000/api/admin/mantenimientos"; // ✅ RUTA NUEVA DE MANTENIMIENTO
+  const API_MANTENIMIENTOS = "http://localhost:5000/api/admin/mantenimientos"; 
 
   useEffect(() => {
     cargarDatos();
     cargarSolicitudes();
     cargarContratos();
     cargarPagos(); 
-    cargarMantenimientos(); // ✅ CARGAMOS MANTENIMIENTOS AL INICIAR
+    cargarMantenimientos(); 
   }, [userId]);
 
   const cargarDatos = async () => {
@@ -124,7 +128,6 @@ const AdminDashboard = () => {
     }
   };
 
-  // ✅ FUNCIONES PARA MANTENIMIENTO (Añadido sin borrar nada)
   const cargarMantenimientos = async () => {
     try {
       const res = await axios.get(API_MANTENIMIENTOS);
@@ -153,6 +156,27 @@ const AdminDashboard = () => {
     }));
     return { totalRenta, pendientes, chartData };
   }, [propiedades, solicitudes]);
+
+  // ✅ CONSTANTE PARA FILTRAR LOS PAGOS (AHORA INCLUYE BÚSQUEDA DE TEXTO Y BOTONES)
+  const pagosAdminFiltrados = useMemo(() => {
+    return pagosAdmin.filter(pago => {
+      // 1. Filtro por los botones
+      const est = pago.estado?.toLowerCase() || 'pendiente';
+      let pasaBoton = true;
+      if (filtroPagosAdmin === 'aprobados') pasaBoton = (est === 'aprobado' || est === 'pagado');
+      else if (filtroPagosAdmin === 'pendientes') pasaBoton = (est === 'pendiente');
+      else if (filtroPagosAdmin === 'rechazados') pasaBoton = (est === 'rechazado' || est === 'atrasado');
+
+      // 2. Filtro por el texto que escribió el Admin (Nombre, Propiedad o Mes)
+      const texto = busquedaPagos.toLowerCase();
+      const pasaTexto = 
+        (pago.nombre_cliente && pago.nombre_cliente.toLowerCase().includes(texto)) ||
+        (pago.nombre_propiedad && pago.nombre_propiedad.toLowerCase().includes(texto)) ||
+        (pago.mes && pago.mes.toLowerCase().includes(texto));
+
+      return pasaBoton && pasaTexto;
+    });
+  }, [pagosAdmin, filtroPagosAdmin, busquedaPagos]);
 
   const handleAceptarCita = async (id, correo, nombre) => {
     try {
@@ -191,6 +215,8 @@ const AdminDashboard = () => {
         banos: parseInt(form.banos) || 0,
         parqueaderos: parseInt(form.parqueaderos) || 0,
         metros_cuadrados: parseFloat(form.metros_cuadrados) || 0,
+        latitud: form.latitud ? parseFloat(form.latitud) : null, 
+        longitud: form.longitud ? parseFloat(form.longitud) : null, 
         estado: form.estado || "disponible"
       };
 
@@ -216,8 +242,9 @@ const AdminDashboard = () => {
     banos: "", metros_cuadrados: "", descripcion: "", imagen_url: "", imagenes_extra: [],
     tipo_propiedad: "Departamento", estado_amoblado: "Vacío", garantia: "", alicuota: "",
     parqueaderos: "0", piso: "1", año_construccion: "2024", reglas: "",
-    incluye_agua: false, incluye_luz: false, incluye_internet: false, mascotas: false,
-    fumar: false, ascensor: false, seguridad: false, gym: false, piscina: false
+    incluye_agua: true, incluye_luz: true, incluye_internet: true, mascotas: false,
+    fumar: false, ascensor: false, seguridad: false, gym: false, piscina: false,
+    latitud: "", longitud: "" 
   });
 
   const handleConfirmarEliminar = (id) => {
@@ -327,7 +354,6 @@ const AdminDashboard = () => {
         </Box>
       </Dialog>
 
-      {/* ✅ MODAL PARA VER FOTO DE MANTENIMIENTO */}
       <Dialog open={!!fotoMantenimiento} onClose={() => setFotoMantenimiento(null)} maxWidth="sm" fullWidth PaperProps={{ sx: { borderRadius: "16px", p: 2, bgcolor: '#f5f5f5' } }}>
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
           <Typography variant="h6" fontWeight="bold" color={palette.titulos}>Foto del Daño</Typography>
@@ -465,7 +491,7 @@ const AdminDashboard = () => {
             { id: "solicitudes", icon: <Mail />, label: "Citas / Agendas" },
             { id: "contratos", icon: <Description />, label: "Contratos Generados" },
             { id: "pagos", icon: <Payments />, label: "Revisión de Pagos" },
-            { id: "mantenimiento", icon: <Build />, label: "Mantenimiento" } // ✅ NUEVO BOTÓN
+            { id: "mantenimiento", icon: <Build />, label: "Mantenimiento" } 
           ].map((item) => (
             <ListItemButton key={item.id} selected={aseccion === item.id} onClick={() => { setSeccion(item.id); if (item.id === "publicar") resetForm(); }} sx={{ borderRadius: 1, mb: 1 }}>
               <ListItemIcon>{item.icon}</ListItemIcon>
@@ -545,6 +571,21 @@ const AdminDashboard = () => {
                   <Grid item size={{ xs: 12 }}><TextField label="Título del Anuncio" fullWidth value={form.sector} onChange={(e) => setForm({...form, sector: e.target.value})} /></Grid>
                   <Grid item size={{ xs: 12, md: 6 }}><TextField label="Ciudad" fullWidth value={form.ciudad} onChange={(e) => setForm({...form, ciudad: e.target.value})} /></Grid>
                   <Grid item size={{ xs: 12, md: 6 }}><TextField label="Sector / Barrio" fullWidth value={form.direccion} onChange={(e) => setForm({...form, direccion: e.target.value})} /></Grid>
+                  
+                  <Grid item size={{ xs: 12 }} sx={{ mt: 2 }}>
+                    <Typography variant="subtitle2" sx={{ color: palette.titulos, mb: 1, fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: 1 }}>
+                      <LocationOn fontSize="small" /> Ubicación en el Mapa (Haz clic para marcar el punto exacto)
+                    </Typography>
+                    <MapaInteractiva lat={form.latitud} lng={form.longitud} onLocationSelect={(lat, lng) => setForm({...form, latitud: lat, longitud: lng})} />
+                  </Grid>
+
+                  <Grid size={{ xs: 12, md: 6 }}>
+                    <TextField label="Latitud (Coordenada N/S)" fullWidth value={form.latitud} InputLabelProps={{ shrink: true }} placeholder="Selecciona en el mapa" />
+                  </Grid>
+                  <Grid size={{ xs: 12, md: 6 }}>
+                    <TextField label="Longitud (Coordenada E/O)" fullWidth value={form.longitud} InputLabelProps={{ shrink: true }} placeholder="Selecciona en el mapa" />
+                  </Grid>                  
+                  
                   <Grid item size={{ xs: 12 }} sx={{ mt: 2 }}><Typography variant="h6" color={palette.botonPrincipal} sx={{ display: 'flex', alignItems: 'center', gap: 1, fontWeight: 700 }}><AttachMoney /> 2. Información de Precio y Garantía</Typography><Divider sx={{ my: 1, borderBottomWidth: 2, borderColor: palette.botonPrincipal }} /></Grid>
                   <Grid item size={{ xs: 12, md: 4 }}><TextField label="Renta Mensual ($)" type="number" fullWidth value={form.precio_mensual} onChange={(e) => setForm({...form, precio_mensual: e.target.value})} /></Grid>
                   <Grid item size={{ xs: 12, md: 4 }}><TextField label="Depósito / Garantía ($)" type="number" fullWidth value={form.garantia} onChange={(e) => setForm({...form, garantia: e.target.value})} /></Grid>
@@ -557,8 +598,48 @@ const AdminDashboard = () => {
                   <Grid item size={{ xs: 12, md: 6 }}><TextField select label="Tipo" fullWidth value={form.tipo_propiedad} onChange={(e) => setForm({...form, tipo_propiedad: e.target.value})}>{["Departamento", "Casa", "Suite", "Estudio"].map(opt => <MenuItem key={opt} value={opt}>{opt}</MenuItem>)}</TextField></Grid>
                   <Grid item size={{ xs: 12, md: 6 }}><TextField select label="Mobiliario" fullWidth value={form.estado_amoblado} onChange={(e) => setForm({...form, estado_amoblado: e.target.value})}>{["Amoblado", "Semi-amoblado", "Vacío"].map(opt => <MenuItem key={opt} value={opt}>{opt}</MenuItem>)}</TextField></Grid>
                   
-                  <Grid item size={{ xs: 12 }} sx={{ mt: 2 }}><Typography variant="h6" color={palette.botonPrincipal} sx={{ display: 'flex', alignItems: 'center', gap: 1, fontWeight: 700 }}><Rule /> 4. Servicios Incluidos y Reglas</Typography><Divider sx={{ my: 1, borderBottomWidth: 2, borderColor: palette.botonPrincipal }} /></Grid>
-                  <Grid item size={{ xs: 12 }}><FormGroup sx={{ display: 'flex', flexDirection: 'row', gap: 2 }}><FormControlLabel control={<Checkbox checked={form.incluye_agua} onChange={(e) => setForm({...form, incluye_agua: e.target.checked})} />} label="Agua" /><FormControlLabel control={<Checkbox checked={form.incluye_luz} onChange={(e) => setForm({...form, incluye_luz: e.target.checked})} />} label="Luz" /><FormControlLabel control={<Checkbox checked={form.incluye_internet} onChange={(e) => setForm({...form, incluye_internet: e.target.checked})} />} label="WiFi" /><FormControlLabel control={<Checkbox checked={form.mascotas} onChange={(e) => setForm({...form, mascotas: e.target.checked})} />} label="Mascotas ok" /></FormGroup></Grid>
+                  <Grid item size={{ xs: 12 }} sx={{ mt: 2 }}>
+                    <Typography variant="h6" color={palette.botonPrincipal} sx={{ display: 'flex', alignItems: 'center', gap: 1, fontWeight: 700 }}>
+                      <Rule /> 4. Servicios Incluidos y Reglas
+                    </Typography>
+                    <Divider sx={{ my: 1, borderBottomWidth: 2, borderColor: palette.botonPrincipal }} />
+                  </Grid>
+                  <Grid item size={{ xs: 12 }}>
+                    <Paper variant="outlined" sx={{ p: 2, borderRadius: 2, bgcolor: "#fff", border: '1px solid #ddd' }}>
+                      <Stack direction="column" spacing={2}>
+                        <Stack direction="row" spacing={3}>
+                          <FormControlLabel control={<Checkbox checked={form.incluye_agua} onChange={(e) => setForm({...form, incluye_agua: e.target.checked})} />} label="Agua" />
+                          <FormControlLabel control={<Checkbox checked={form.incluye_luz} onChange={(e) => setForm({...form, incluye_luz: e.target.checked})} />} label="Luz" />
+                          <FormControlLabel control={<Checkbox checked={form.incluye_internet} onChange={(e) => setForm({...form, incluye_internet: e.target.checked})} />} label="WiFi" />
+                        </Stack>
+                        <Divider />
+                        <FormControlLabel 
+                          control={
+                            <Checkbox 
+                              checked={form.mascotas} 
+                              onChange={(e) => {
+                                const checked = e.target.checked;
+                                setForm({
+                                  ...form, 
+                                  mascotas: checked,
+                                  reglas: checked 
+                                    ? (form.reglas + "\n- Se aceptan mascotas (bajo estrictas políticas de higiene y comportamiento educado).").trim() 
+                                    : form.reglas
+                                });
+                              }} 
+                              color="warning"
+                            />
+                          } 
+                          label={
+                            <Box>
+                              <Typography variant="body2" sx={{ fontWeight: 'bold' }}>Se aceptan mascotas</Typography>
+                              <Typography variant="caption" color="textSecondary">* Bajo estrictas políticas de higiene y comportamiento educado.</Typography>
+                            </Box>
+                          } 
+                        />
+                      </Stack>
+                    </Paper>
+                  </Grid>
                   
                   <Grid item size={{ xs: 12 }}>
                     <TextField 
@@ -703,15 +784,70 @@ const AdminDashboard = () => {
           ))}</Box>
         )}
 
+        {/* ✅ TABLA DE PAGOS CON EL NUEVO BUSCADOR Y LOS FILTROS */}
         {aseccion === "pagos" && (
           <Container maxWidth="lg">
-            <Typography variant="h4" sx={{ fontWeight: 900, mb: 4, color: palette.titulos }}>Control de Pagos 💰</Typography>
+            <Typography variant="h4" sx={{ fontWeight: 900, mb: 4, color: palette.titulos }}>Control de Pagos </Typography>
             
+            {/* ✅ CONTENEDOR DE BUSCADOR + BOTONES */}
+            <Box sx={{ mb: 3, display: 'flex', flexDirection: { xs: 'column', md: 'row' }, gap: 2, justifyContent: 'space-between', alignItems: { md: 'center' } }}>
+              
+              {/* Botones de Estado */}
+              <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                <Button 
+                  variant={filtroPagosAdmin === 'todos' ? 'contained' : 'outlined'} 
+                  onClick={() => setFiltroPagosAdmin('todos')}
+                  sx={{ borderRadius: 8, borderColor: palette.botonPrincipal, color: filtroPagosAdmin === 'todos' ? 'white' : palette.botonPrincipal, bgcolor: filtroPagosAdmin === 'todos' ? palette.botonPrincipal : 'transparent', '&:hover': { bgcolor: palette.botonPrincipal, color: 'white' } }}
+                >
+                  Todos
+                </Button>
+                <Button 
+                  variant={filtroPagosAdmin === 'pendientes' ? 'contained' : 'outlined'} 
+                  onClick={() => setFiltroPagosAdmin('pendientes')}
+                  sx={{ borderRadius: 8, borderColor: '#f57c00', color: filtroPagosAdmin === 'pendientes' ? 'white' : '#f57c00', bgcolor: filtroPagosAdmin === 'pendientes' ? '#f57c00' : 'transparent', '&:hover': { bgcolor: '#f57c00', color: 'white' } }}
+                >
+                  Pendientes
+                </Button>
+                <Button 
+                  variant={filtroPagosAdmin === 'aprobados' ? 'contained' : 'outlined'} 
+                  onClick={() => setFiltroPagosAdmin('aprobados')}
+                  sx={{ borderRadius: 8, borderColor: '#2e7d32', color: filtroPagosAdmin === 'aprobados' ? 'white' : '#2e7d32', bgcolor: filtroPagosAdmin === 'aprobados' ? '#2e7d32' : 'transparent', '&:hover': { bgcolor: '#2e7d32', color: 'white' } }}
+                >
+                  Aprobados
+                </Button>
+                <Button 
+                  variant={filtroPagosAdmin === 'rechazados' ? 'contained' : 'outlined'} 
+                  onClick={() => setFiltroPagosAdmin('rechazados')}
+                  sx={{ borderRadius: 8, borderColor: '#c62828', color: filtroPagosAdmin === 'rechazados' ? 'white' : '#c62828', bgcolor: filtroPagosAdmin === 'rechazados' ? '#c62828' : 'transparent', '&:hover': { bgcolor: '#c62828', color: 'white' } }}
+                >
+                  Rechazados
+                </Button>
+              </Box>
+
+              {/* ✅ BARRA DE BÚSQUEDA DE TEXTO */}
+              <TextField
+                variant="outlined"
+                size="small"
+                placeholder="Buscar cliente, propiedad o mes..."
+                value={busquedaPagos}
+                onChange={(e) => setBusquedaPagos(e.target.value)}
+                InputProps={{
+                  startAdornment: <InputAdornment position="start"><SearchIcon color="action" /></InputAdornment>,
+                }}
+                sx={{ 
+                  bgcolor: 'white', 
+                  borderRadius: 2, 
+                  minWidth: { xs: '100%', md: '320px' },
+                  '& .MuiOutlinedInput-root': { borderRadius: 2 } 
+                }}
+              />
+            </Box>
+
             <TableContainer component={Paper} sx={{ borderRadius: "15px", boxShadow: "0 4px 20px rgba(0,0,0,0.05)" }}>
               <Table>
                 <TableHead sx={{ bgcolor: palette.fondoAlterno }}>
                   <TableRow>
-                    <TableCell sx={{ fontWeight: 'bold', color: palette.titulos }}>Inquilino</TableCell>
+                    <TableCell sx={{ fontWeight: 'bold', color: palette.titulos }}>Inquilino / Comprador</TableCell>
                     <TableCell sx={{ fontWeight: 'bold', color: palette.titulos }}>Propiedad</TableCell>
                     <TableCell sx={{ fontWeight: 'bold', color: palette.titulos }}>Mes / Monto</TableCell>
                     <TableCell sx={{ fontWeight: 'bold', color: palette.titulos }}>Comprobante</TableCell>
@@ -720,14 +856,16 @@ const AdminDashboard = () => {
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {pagosAdmin.length === 0 ? (
+                  {pagosAdminFiltrados.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={6} align="center" sx={{ py: 5 }}>
-                        <Typography color="textSecondary">No hay pagos registrados aún.</Typography>
+                        <Typography color="textSecondary">
+                          {busquedaPagos ? "No hay resultados para tu búsqueda." : "No hay pagos que coincidan con este filtro."}
+                        </Typography>
                       </TableCell>
                     </TableRow>
                   ) : (
-                    pagosAdmin.map((pago) => (
+                    pagosAdminFiltrados.map((pago) => (
                       <TableRow key={pago.id} hover>
                         <TableCell>
                           <Typography variant="body2" fontWeight="bold">{pago.nombre_cliente}</Typography>
@@ -785,7 +923,6 @@ const AdminDashboard = () => {
           </Container>
         )}
 
-        {/* ✅ NUEVA SECCIÓN DE MANTENIMIENTO */}
         {aseccion === "mantenimiento" && (
           <Container maxWidth="lg">
             <Typography variant="h4" sx={{ fontWeight: 900, mb: 4, color: palette.titulos }}>Reportes de Mantenimiento </Typography>

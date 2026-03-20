@@ -49,8 +49,13 @@ export const crearSolicitud = async (req, res) => {
 export const aceptarSolicitud = async (req, res) => {
     const { id } = req.params;
     try {
+        // ✅ CAMBIO: Usamos una subconsulta para traer el 'sector' de la tabla propiedades
         const result = await pool.query(
-            "UPDATE solicitudes_arriendo SET estado = 'aceptada' WHERE id = $1 RETURNING *",
+            `UPDATE solicitudes_arriendo 
+             SET estado = 'aceptada' 
+             WHERE id = $1 
+             RETURNING *, 
+             (SELECT sector FROM propiedades WHERE id = solicitudes_arriendo.propiedad_id) as nombre_departamento`,
             [id]
         );
 
@@ -68,7 +73,6 @@ export const aceptarSolicitud = async (req, res) => {
         if (solicitud.correo_cliente) {
             const subject = "✅ Tu cita ha sido ACEPTADA - MiRentaAPP";
             
-            // ✅ DISEÑO NUEVO: Solo notificación, sin botones de registro
             const html = `
                 <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; border: 1px solid #C66A3D; padding: 30px; border-radius: 15px; max-width: 550px; margin: auto; line-height: 1.6;">
                     <h2 style="color: #4E5B3C; text-align: center; margin-bottom: 20px;">¡Confirmación de Cita!</h2>
@@ -78,7 +82,9 @@ export const aceptarSolicitud = async (req, res) => {
                     </p>
                     
                     <p style="font-size: 15px; color: #444;">
-                        Es un gusto saludarte. Te notificamos que tu solicitud de visita para el inmueble identificado con el código <b>#${solicitud.propiedad_id}</b> ha sido revisada y <b>APROBADA</b> con éxito por el propietario.
+                        Es un gusto saludarte. Te notificamos que tu solicitud de visita para el inmueble identificado como 
+                        <b style="color: #C66A3D;">"${solicitud.nombre_departamento || 'Departamento Lujoso'}"</b> 
+                        ha sido revisada y <b>APROBADA</b> con éxito por el propietario.
                     </p>
                     
                     <div style="background-color: #FDF8F5; border: 1px dashed #C66A3D; padding: 20px; border-radius: 10px; margin: 25px 0;">
@@ -117,6 +123,7 @@ export const aceptarSolicitud = async (req, res) => {
         res.status(500).json({ error: "Error en el servidor: " + error.message });
     }
 };
+
 export const listarPorPropietario = async (req, res) => {
     try {
         const result = await pool.query(
