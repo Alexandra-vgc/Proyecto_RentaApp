@@ -244,6 +244,63 @@ router.put('/mi-perfil', verifyToken, async (req, res) => {
   }
 });
 
+// ==========================================
+// 🛠️ MANTENIMIENTOS (Recuperado tras la mezcla de Git)
+// ==========================================
+router.get('/mantenimientos', verifyToken, async (req, res) => {
+  try {
+    const inquilinoId = await obtenerInquilinoReal(req);
+    if (!inquilinoId) return res.json([]);
+
+    const result = await pool.query(`
+      SELECT * FROM mantenimientos 
+      WHERE inquilino_id = $1 
+      ORDER BY fecha_reporte DESC
+    `, [inquilinoId]);
+
+    res.json(result.rows);
+  } catch (error) {
+    console.error('❌ Error al obtener mantenimientos:', error);
+    res.status(500).json({ message: 'Error al cargar mantenimientos' });
+  }
+});
+
+router.post('/mantenimientos', verifyToken, async (req, res) => {
+  try {
+    const inquilinoId = await obtenerInquilinoReal(req);
+    if (!inquilinoId) return res.status(400).json({ message: 'Aún no tienes contrato' });
+
+    // 1. Buscar a qué propiedad pertenece este inquilino
+    const contrato = await pool.query(`
+      SELECT propiedad_id FROM contratos WHERE inquilino_id = $1 AND estado = 'activo' LIMIT 1
+    `, [inquilinoId]);
+
+    if (contrato.rows.length === 0) {
+      return res.status(404).json({ message: 'No tienes un contrato activo para reportar daños' });
+    }
+
+    const propiedadId = contrato.rows[0].propiedad_id;
+    const { descripcion, foto_url } = req.body;
+
+    if (!descripcion) return res.status(400).json({ message: 'La descripción es obligatoria' });
+
+    console.log(`[BACKEND] Guardando reporte de mantenimiento del inquilino ${inquilinoId}...`);
+
+    // 2. Guardar el reporte
+    const result = await pool.query(`
+      INSERT INTO mantenimientos (propiedad_id, inquilino_id, descripcion, foto_url, estado) 
+      VALUES ($1, $2, $3, $4, 'Pendiente') RETURNING *
+    `, [propiedadId, inquilinoId, descripcion, foto_url || null]);
+    
+    console.log(`[BACKEND] ✅ Reporte guardado con éxito.`);
+    res.status(201).json({ message: 'Reporte enviado a revisión exitosamente', mantenimiento: result.rows[0] });
+  } catch (error) {
+    console.error('\n❌ ERROR AL GUARDAR MANTENIMIENTO:');
+    console.error(error.message);
+    res.status(500).json({ message: 'Error al registrar el reporte' });
+  }
+});
+
 
 
 export default router;

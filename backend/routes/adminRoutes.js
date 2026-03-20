@@ -1,49 +1,22 @@
 const express = require('express');
 const router = express.Router();
-const pool = require('../config/db'); // Asegúrate de que la ruta a tu conexión de BD sea correcta
+// ✅ Importamos el controlador que tiene toda la lógica de los 23 campos
+const propiedadesController = require('../controllers/propiedadesController'); 
 
-// 1. Obtener TODAS las propiedades (Para el PublicHome)
-router.get('/propiedades', async (req, res) => {
-    try {
-        const resultado = await pool.query('SELECT * FROM propiedades ORDER BY id ASC');
-        res.json(resultado.rows);
-    } catch (error) {
-        console.error("Error al obtener propiedades:", error);
-        res.status(500).json({ mensaje: "Error en el servidor" });
-    }
-});
+// 1. OBTENER TODAS LAS PROPIEDADES
+// Se usa para el PublicHome y la sección de "Más Populares"
+router.get('/propiedades', propiedadesController.obtenerPropiedades);
 
-// 2. OBTENER UNA PROPIEDAD POR ID (Esto es lo que arregla tu pantalla de detalles)
-router.get('/propiedades/:id', async (req, res) => {
-    const { id } = req.params;
-    try {
-        // Consultamos la tabla 'propiedades' usando el ID que viene de la URL
-        const resultado = await pool.query('SELECT * FROM propiedades WHERE id = $1', [id]);
-        
-        if (resultado.rows.length === 0) {
-            return res.status(404).json({ mensaje: "Propiedad no encontrada en la base de datos" });
-        }
-        
-        res.json(resultado.rows[0]); // Enviamos solo la propiedad encontrada
-    } catch (error) {
-        console.error("Error al obtener detalle de propiedad:", error);
-        res.status(500).json({ mensaje: "Error en el servidor al consultar el ID" });
-    }
-});
+// 2. OBTENER UNA PROPIEDAD POR ID
+// Este es el que hace que funcione tu pantalla de "Ver Detalles"
+router.get('/propiedades/:id', propiedadesController.obtenerPropiedadPorId);
 
-// 3. Crear una nueva propiedad (Para tu formulario de Publicar)
-router.post('/propiedades', async (req, res) => {
-    const { sector, ciudad, direccion, precio_mensual, habitaciones, banos, metros_cuadrados, descripcion, imagen_url } = req.body;
-    try {
-        const nuevaPropiedad = await pool.query(
-            'INSERT INTO propiedades (sector, ciudad, direccion, precio_mensual, habitaciones, banos, metros_cuadrados, descripcion, imagen_url) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *',
-            [sector, ciudad, direccion, precio_mensual, habitaciones, banos, metros_cuadrados, descripcion, imagen_url]
-        );
-        res.json(nuevaPropiedad.rows[0]);
-    } catch (error) {
-        console.error("Error al publicar:", error);
-        res.status(500).send("Error al guardar la propiedad");
-    }
-});
+// 3. CREAR UNA NUEVA PROPIEDAD
+// Este recibe TODO: sector, precio, habitaciones, imagen_url, latitud, longitud, etc.
+router.post('/propiedades', propiedadesController.crearPropiedad);
+
+// 4. (OPCIONAL) Si necesitas actualizar o eliminar en el futuro, los añades aquí:
+// router.put('/propiedades/:id', propiedadesController.actualizarPropiedad);
+// router.delete('/propiedades/:id', propiedadesController.eliminarPropiedad);
 
 module.exports = router;

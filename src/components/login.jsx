@@ -136,9 +136,17 @@ function Login() {
               <label style={{ fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '5px', cursor: 'pointer' }}>
                 <input type="checkbox" style={{ width: 'auto', height: 'auto', margin: 0 }}/> Recordarme
               </label>
-              <button type="button" className="forgot-password-btn" onClick={() => {setVistaActual('pedir-correo'); setError(''); setSuccessMsg('');}}>
-                ¿Olvidaste tu contraseña?
-              </button>
+              <button 
+  type="button" 
+  className="forgot-password-btn" 
+  onClick={() => {
+    setError(''); 
+    setSuccessMsg(''); 
+    setVistaActual('pedir-correo');
+  }}
+>
+  ¿Olvidaste tu contraseña?
+</button>
             </div>
 
             <button type="submit" className="btn-login" disabled={loading}>

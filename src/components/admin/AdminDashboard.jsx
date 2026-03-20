@@ -184,20 +184,24 @@ const AdminDashboard = () => {
     e.preventDefault();
     try {
       const dataToSend = {
-        ...form,
-        codigo: form.id ? form.codigo : `PROP-${Math.floor(Math.random() * 9000 + 1000)}`,
-        precio_mensual: parseFloat(form.precio_mensual) || 0,
-        garantia: parseFloat(form.garantia) || 0,
-        alicuota: parseFloat(form.alicuota) || 0,
-        habitaciones: parseInt(form.habitaciones) || 0,
-        banos: parseInt(form.banos) || 0,
-        parqueaderos: parseInt(form.parqueaderos) || 0,
-        metros_cuadrados: parseFloat(form.metros_cuadrados) || 0,
-        // ✅ AQUÍ ESTÁ EL CAMBIO PARA EL MAPA:
-        latitud: form.latitud ? parseFloat(form.latitud) : null, 
-      longitud: form.longitud ? parseFloat(form.longitud) : null, 
-        estado: form.estado || "disponible"
-      };
+  ...form,
+  codigo: form.id ? form.codigo : `PROP-${Math.floor(Math.random() * 9000 + 1000)}`,
+  precio_mensual: parseFloat(form.precio_mensual) || 0,
+  garantia: parseFloat(form.garantia) || 0,
+  alicuota: parseFloat(form.alicuota) || 0,
+  habitaciones: parseInt(form.habitaciones) || 0,
+  banos: parseInt(form.banos) || 0,
+  parqueaderos: parseInt(form.parqueaderos) || 0,
+  metros_cuadrados: parseFloat(form.metros_cuadrados) || 0,
+  
+  // ✅ ASEGÚRATE DE QUE ESTO ESTÉ AQUÍ PARA LAS FOTOS:
+  imagen_url: form.imagen_url || "", 
+  imagenes_extra: form.imagenes_extra || [], 
+
+  latitud: form.latitud ? parseFloat(form.latitud) : null, 
+  longitud: form.longitud ? parseFloat(form.longitud) : null, 
+  estado: form.estado || "disponible"
+};
 
       
 
@@ -225,7 +229,7 @@ const AdminDashboard = () => {
     parqueaderos: "0", piso: "1", año_construccion: "2024", reglas: "",
     incluye_agua: true, incluye_luz: true, incluye_internet: true, mascotas: false,
     fumar: false, ascensor: false, seguridad: false, gym: false, piscina: false,
-    latitud: "", longitud: "" // ✅ AÑADE ESTO TAMBIÉN
+    latitud: "", longitud: "", calle_secundaria: "", // ✅ AÑADE ESTO TAMBIÉN
   });
 
   const handleConfirmarEliminar = (id) => {
@@ -541,137 +545,229 @@ const AdminDashboard = () => {
           </Grid>
         )}
 
-        {aseccion === "publicar" && (
-          <Container maxWidth="md">
-            <Paper sx={{ p: 5, bgcolor: palette.fondoAlterno, borderRadius: 2 }}>
-              <Typography variant="h4" mb={4} color={palette.titulos} sx={{ fontWeight: 900, display: 'flex', alignItems: 'center', gap: 2, justifyContent: 'center' }}>
-                <Business /> {form.id ? "Actualizar Anuncio" : "Publicar Arriendo"}
-              </Typography>
-              <form onSubmit={handleSubmit}>
-                <Grid container spacing={3}>
-                  <Grid item size={{ xs: 12 }}><Typography variant="h6" color={palette.botonPrincipal} sx={{ display: 'flex', alignItems: 'center', gap: 1, fontWeight: 700 }}><LocationOn /> 1. Información y Ubicación</Typography><Divider sx={{ my: 1, borderBottomWidth: 2, borderColor: palette.botonPrincipal }} /></Grid>
-                  <Grid item size={{ xs: 12 }}><TextField label="Título del Anuncio" fullWidth value={form.sector} onChange={(e) => setForm({...form, sector: e.target.value})} /></Grid>
-                  <Grid item size={{ xs: 12, md: 6 }}><TextField label="Ciudad" fullWidth value={form.ciudad} onChange={(e) => setForm({...form, ciudad: e.target.value})} /></Grid>
-                  <Grid item size={{ xs: 12, md: 6 }}><TextField label="Sector / Barrio" fullWidth value={form.direccion} onChange={(e) => setForm({...form, direccion: e.target.value})} /></Grid>
-                  {/* ✅ MAPA Y COORDENADAS PARA EL USUARIO */}
-<Grid item size={{ xs: 12 }} sx={{ mt: 2 }}>
-  <Typography variant="subtitle2" sx={{ color: palette.titulos, mb: 1, fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: 1 }}>
-    <LocationOn fontSize="small" /> Ubicación en el Mapa (Haz clic para marcar el punto exacto)
-  </Typography>
-  
-  <MapaInteractiva 
-    lat={form.latitud} 
-    lng={form.longitud} 
-    onLocationSelect={(lat, lng) => setForm({...form, latitud: lat, longitud: lng})} 
-  />
-</Grid>
+{aseccion === "publicar" && (
+  <Container maxWidth="md">
+    <Paper sx={{ p: 5, bgcolor: palette.fondoAlterno, borderRadius: 2 }}>
+      <Typography variant="h4" mb={4} color={palette.titulos} sx={{ fontWeight: 900, display: 'flex', alignItems: 'center', gap: 2, justifyContent: 'center' }}>
+        <Business /> {form.id ? "Actualizar Anuncio" : "Publicar Arriendo"}
+      </Typography>
+      <form onSubmit={handleSubmit}>
+        <Grid container spacing={3}>
+          <Grid item size={{ xs: 12 }}>
+            <Typography variant="h6" color={palette.botonPrincipal} sx={{ display: 'flex', alignItems: 'center', gap: 1, fontWeight: 700 }}>
+              <LocationOn /> 1. Información y Ubicación
+            </Typography>
+            <Divider sx={{ my: 1, borderBottomWidth: 2, borderColor: palette.botonPrincipal }} />
+          </Grid>
+          
+          <Grid item size={{ xs: 12 }}>
+            <TextField label="Título del Anuncio" fullWidth value={form.sector} onChange={(e) => setForm({...form, sector: e.target.value})} />
+          </Grid>
+          
+          <Grid item size={{ xs: 12, md: 6 }}>
+            <TextField label="Ciudad" fullWidth value={form.ciudad} onChange={(e) => setForm({...form, ciudad: e.target.value})} />
+          </Grid>
+          
+          <Grid item size={{ xs: 12, md: 6 }}>
+            <TextField label="Sector / Barrio" fullWidth value={form.direccion} onChange={(e) => setForm({...form, direccion: e.target.value})} />
+          </Grid>
 
-<Grid size={{ xs: 12, md: 6 }}>
-  <TextField 
-    label="Latitud (Coordenada N/S)" 
-    fullWidth 
-    value={form.latitud} 
-    InputLabelProps={{ shrink: true }} // ✅ Esto arregla el amontonamiento
-    placeholder="Selecciona en el mapa"
-  />
-</Grid>
-<Grid size={{ xs: 12, md: 6 }}>
-  <TextField 
-    label="Longitud (Coordenada E/O)" 
-    fullWidth 
-    value={form.longitud} 
-    InputLabelProps={{ shrink: true }} // ✅ Esto arregla el amontonamiento
-    placeholder="Selecciona en el mapa"
-  />
-</Grid>                  <Grid item size={{ xs: 12 }} sx={{ mt: 2 }}><Typography variant="h6" color={palette.botonPrincipal} sx={{ display: 'flex', alignItems: 'center', gap: 1, fontWeight: 700 }}><AttachMoney /> 2. Información de Precio y Garantía</Typography><Divider sx={{ my: 1, borderBottomWidth: 2, borderColor: palette.botonPrincipal }} /></Grid>
-                  <Grid item size={{ xs: 12, md: 4 }}><TextField label="Renta Mensual ($)" type="number" fullWidth value={form.precio_mensual} onChange={(e) => setForm({...form, precio_mensual: e.target.value})} /></Grid>
-                  <Grid item size={{ xs: 12, md: 4 }}><TextField label="Depósito / Garantía ($)" type="number" fullWidth value={form.garantia} onChange={(e) => setForm({...form, garantia: e.target.value})} /></Grid>
-                  <Grid item size={{ xs: 12, md: 4 }}><TextField label="Alícuota ($)" type="number" fullWidth value={form.alicuota} onChange={(e) => setForm({...form, alicuota: e.target.value})} /></Grid>
-                  <Grid item size={{ xs: 12 }} sx={{ mt: 2 }}><Typography variant="h6" color={palette.botonPrincipal} sx={{ display: 'flex', alignItems: 'center', gap: 1, fontWeight: 700 }}><Straighten /> 3. Características y equipamiento</Typography><Divider sx={{ my: 1, borderBottomWidth: 2, borderColor: palette.botonPrincipal }} /></Grid>
-                  <Grid item size={{ xs: 6, md: 3 }}><TextField label="Área (m²)" type="number" fullWidth value={form.metros_cuadrados} onChange={(e) => setForm({...form, metros_cuadrados: e.target.value})} /></Grid>
-                  <Grid item size={{ xs: 6, md: 3 }}><TextField label="Habitaciones" type="number" fullWidth value={form.habitaciones} onChange={(e) => setForm({...form, habitaciones: e.target.value})} /></Grid>
-                  <Grid item size={{ xs: 6, md: 3 }}><TextField label="Baños" type="number" fullWidth value={form.banos} onChange={(e) => setForm({...form, banos: e.target.value})} /></Grid>
-                  <Grid item size={{ xs: 6, md: 3 }}><TextField label="Parqueaderos" type="number" fullWidth value={form.parqueaderos} onChange={(e) => setForm({...form, parqueaderos: e.target.value})} /></Grid>
-                  <Grid item size={{ xs: 12, md: 6 }}><TextField select label="Tipo" fullWidth value={form.tipo_propiedad} onChange={(e) => setForm({...form, tipo_propiedad: e.target.value})}>{["Departamento", "Casa", "Suite", "Estudio"].map(opt => <MenuItem key={opt} value={opt}>{opt}</MenuItem>)}</TextField></Grid>
-                  <Grid item size={{ xs: 12, md: 6 }}><TextField select label="Mobiliario" fullWidth value={form.estado_amoblado} onChange={(e) => setForm({...form, estado_amoblado: e.target.value})}>{["Amoblado", "Semi-amoblado", "Vacío"].map(opt => <MenuItem key={opt} value={opt}>{opt}</MenuItem>)}</TextField></Grid>
-                  
-                  <Grid item size={{ xs: 12 }} sx={{ mt: 2 }}>
-  <Typography variant="h6" color={palette.botonPrincipal} sx={{ display: 'flex', alignItems: 'center', gap: 1, fontWeight: 700 }}>
-    <Rule /> 4. Servicios Incluidos y Reglas
-  </Typography>
-  <Divider sx={{ my: 1, borderBottomWidth: 2, borderColor: palette.botonPrincipal }} />
-</Grid>
-                  <Grid item size={{ xs: 12 }}>
-  <Paper variant="outlined" sx={{ p: 2, borderRadius: 2, bgcolor: "#fff", border: '1px solid #ddd' }}>
-    <Stack direction="column" spacing={2}>
-      {/* SERVICIOS BÁSICOS */}
-      <Stack direction="row" spacing={3}>
-        <FormControlLabel control={<Checkbox checked={form.incluye_agua} onChange={(e) => setForm({...form, incluye_agua: e.target.checked})} />} label="Agua" />
-        <FormControlLabel control={<Checkbox checked={form.incluye_luz} onChange={(e) => setForm({...form, incluye_luz: e.target.checked})} />} label="Luz" />
-        <FormControlLabel control={<Checkbox checked={form.incluye_internet} onChange={(e) => setForm({...form, incluye_internet: e.target.checked})} />} label="WiFi" />
-      </Stack>
+          {/* ✅ NUEVOS CAMPOS: CALLES PRINCIPAL Y SECUNDARIA */}
+          <Grid item size={{ xs: 12, md: 6 }}>
+            <TextField 
+              label="Calle Principal" 
+              fullWidth 
+              value={form.direccion_principal || ""} 
+              onChange={(e) => setForm({...form, direccion_principal: e.target.value})} 
+            />
+          </Grid>
+          
+          <Grid item size={{ xs: 12, md: 6 }}>
+            <TextField 
+              label="Calle Secundaria" 
+              fullWidth 
+              value={form.calle_secundaria || ""} 
+              onChange={(e) => setForm({...form, calle_secundaria: e.target.value})} 
+            />
+          </Grid>
 
-      <Divider />
+          {/* ✅ MAPA Y COORDENADAS PARA EL USUARIO */}
+          <Grid item size={{ xs: 12 }} sx={{ mt: 2 }}>
+            <Typography variant="subtitle2" sx={{ color: palette.titulos, mb: 1, fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: 1 }}>
+              <LocationOn fontSize="small" /> Ubicación en el Mapa (Haz clic para marcar el punto exacto)
+            </Typography>
+            
+            <MapaInteractiva 
+              lat={form.latitud} 
+              lng={form.longitud} 
+              onLocationSelect={(lat, lng) => setForm({...form, latitud: lat, longitud: lng})} 
+            />
+          </Grid>
 
-      {/* POLÍTICA DE MASCOTAS PERSONALIZADA */}
-      <FormControlLabel 
-        control={
-          <Checkbox 
-            checked={form.mascotas} 
-            onChange={(e) => {
-              const checked = e.target.checked;
-              setForm({
-                ...form, 
-                mascotas: checked,
-                // Agregamos automáticamente la regla de comportamiento si marca el check
-                reglas: checked 
-                  ? (form.reglas + "\n- Se aceptan mascotas (bajo estrictas políticas de higiene y comportamiento educado).").trim() 
-                  : form.reglas
-              });
-            }} 
-            color="warning"
-          />
-        } 
-        label={
-          <Box>
-            <Typography variant="body2" sx={{ fontWeight: 'bold' }}>Se aceptan mascotas</Typography>
-            <Typography variant="caption" color="textSecondary">* Bajo estrictas políticas de higiene y comportamiento educado.</Typography>
-          </Box>
-        } 
-      />
-    </Stack>
-  </Paper>
-</Grid>
-                  
-                  <Grid item size={{ xs: 12 }}>
-                    <TextField 
-                      label="Reglas del Departamento (ej: No ruidos después de las 10 PM, No fiestas)" 
-                      multiline rows={2} fullWidth 
-                      value={form.reglas || ""} 
-                      onChange={(e) => setForm({...form, reglas: e.target.value})} 
+          <Grid size={{ xs: 12, md: 6 }}>
+            <TextField 
+              label="Latitud (Coordenada N/S)" 
+              fullWidth 
+              value={form.latitud} 
+              InputLabelProps={{ shrink: true }} 
+              placeholder="Selecciona en el mapa"
+            />
+          </Grid>
+          <Grid size={{ xs: 12, md: 6 }}>
+            <TextField 
+              label="Longitud (Coordenada E/O)" 
+              fullWidth 
+              value={form.longitud} 
+              InputLabelProps={{ shrink: true }} 
+              placeholder="Selecciona en el mapa"
+            />
+          </Grid>
+
+          <Grid item size={{ xs: 12 }} sx={{ mt: 2 }}>
+            <Typography variant="h6" color={palette.botonPrincipal} sx={{ display: 'flex', alignItems: 'center', gap: 1, fontWeight: 700 }}>
+              <AttachMoney /> 2. Información de Precio y Garantía
+            </Typography>
+            <Divider sx={{ my: 1, borderBottomWidth: 2, borderColor: palette.botonPrincipal }} />
+          </Grid>
+          
+          <Grid item size={{ xs: 12, md: 4 }}>
+            <TextField label="Renta Mensual ($)" type="number" fullWidth value={form.precio_mensual} onChange={(e) => setForm({...form, precio_mensual: e.target.value})} />
+          </Grid>
+          
+          <Grid item size={{ xs: 12, md: 4 }}>
+            <TextField label="Depósito / Garantía ($)" type="number" fullWidth value={form.garantia} onChange={(e) => setForm({...form, garantia: e.target.value})} />
+          </Grid>
+          
+          <Grid item size={{ xs: 12, md: 4 }}>
+            <TextField label="Alícuota ($)" type="number" fullWidth value={form.alicuota} onChange={(e) => setForm({...form, alicuota: e.target.value})} />
+          </Grid>
+
+          <Grid item size={{ xs: 12 }} sx={{ mt: 2 }}>
+            <Typography variant="h6" color={palette.botonPrincipal} sx={{ display: 'flex', alignItems: 'center', gap: 1, fontWeight: 700 }}>
+              <Straighten /> 3. Características y equipamiento
+            </Typography>
+            <Divider sx={{ my: 1, borderBottomWidth: 2, borderColor: palette.botonPrincipal }} />
+          </Grid>
+          
+          <Grid item size={{ xs: 6, md: 3 }}>
+            <TextField label="Área (m²)" type="number" fullWidth value={form.metros_cuadrados} onChange={(e) => setForm({...form, metros_cuadrados: e.target.value})} />
+          </Grid>
+          
+          <Grid item size={{ xs: 6, md: 3 }}>
+            <TextField label="Habitaciones" type="number" fullWidth value={form.habitaciones} onChange={(e) => setForm({...form, habitaciones: e.target.value})} />
+          </Grid>
+          
+          <Grid item size={{ xs: 6, md: 3 }}>
+            <TextField label="Baños" type="number" fullWidth value={form.banos} onChange={(e) => setForm({...form, banos: e.target.value})} />
+          </Grid>
+          
+          <Grid item size={{ xs: 6, md: 3 }}>
+            <TextField label="Parqueaderos" type="number" fullWidth value={form.parqueaderos} onChange={(e) => setForm({...form, parqueaderos: e.target.value})} />
+          </Grid>
+          
+          <Grid item size={{ xs: 12, md: 6 }}>
+            <TextField select label="Tipo" fullWidth value={form.tipo_propiedad} onChange={(e) => setForm({...form, tipo_propiedad: e.target.value})}>
+              {["Departamento", "Casa", "Suite", "Estudio"].map(opt => <MenuItem key={opt} value={opt}>{opt}</MenuItem>)}
+            </TextField>
+          </Grid>
+          
+          <Grid item size={{ xs: 12, md: 6 }}>
+            <TextField select label="Mobiliario" fullWidth value={form.estado_amoblado} onChange={(e) => setForm({...form, estado_amoblado: e.target.value})}>
+              {["Amoblado", "Semi-amoblado", "Vacío"].map(opt => <MenuItem key={opt} value={opt}>{opt}</MenuItem>)}
+            </TextField>
+          </Grid>
+
+          <Grid item size={{ xs: 12 }} sx={{ mt: 2 }}>
+            <Typography variant="h6" color={palette.botonPrincipal} sx={{ display: 'flex', alignItems: 'center', gap: 1, fontWeight: 700 }}>
+              <Rule /> 4. Servicios Incluidos y Reglas
+            </Typography>
+            <Divider sx={{ my: 1, borderBottomWidth: 2, borderColor: palette.botonPrincipal }} />
+          </Grid>
+
+          <Grid item size={{ xs: 12 }}>
+            <Paper variant="outlined" sx={{ p: 2, borderRadius: 2, bgcolor: "#fff", border: '1px solid #ddd' }}>
+              <Stack direction="column" spacing={2}>
+                <Stack direction="row" spacing={3}>
+                  <FormControlLabel control={<Checkbox checked={form.incluye_agua} onChange={(e) => setForm({...form, incluye_agua: e.target.checked})} />} label="Agua" />
+                  <FormControlLabel control={<Checkbox checked={form.incluye_luz} onChange={(e) => setForm({...form, incluye_luz: e.target.checked})} />} label="Luz" />
+                  <FormControlLabel control={<Checkbox checked={form.incluye_internet} onChange={(e) => setForm({...form, incluye_internet: e.target.checked})} />} label="WiFi" />
+                </Stack>
+                <Divider />
+                <FormControlLabel 
+                  control={
+                    <Checkbox 
+                      checked={form.mascotas} 
+                      onChange={(e) => {
+                        const checked = e.target.checked;
+                        setForm({
+                          ...form, 
+                          mascotas: checked,
+                          reglas: checked 
+                            ? (form.reglas + "\n- Se aceptan mascotas (bajo estrictas políticas de higiene y comportamiento educado).").trim() 
+                            : form.reglas
+                        });
+                      }} 
+                      color="warning"
                     />
-                  </Grid>
-
-                  <Grid item size={{ xs: 12 }}><TextField label="Descripción detallada" multiline rows={4} fullWidth value={form.descripcion} onChange={(e) => setForm({...form, descripcion: e.target.value})} /></Grid>
-                  
-                  <Grid item size={{ xs: 12 }} sx={{ mt: 2 }}><Typography variant="h6" color={palette.botonPrincipal} sx={{ display: 'flex', alignItems: 'center', gap: 1, fontWeight: 700 }}><CloudUpload /> 5. Fotos del Departamento</Typography><Divider sx={{ my: 1, borderBottomWidth: 2, borderColor: palette.botonPrincipal }} /></Grid>
-                  <Grid item size={{ xs: 12 }}>
-                    <Stack direction="row" spacing={2} sx={{ mb: 2 }}>
-                      <Button variant="outlined" component="label" startIcon={<Add />}>Foto Principal<input type="file" hidden accept="image/*" onChange={(e) => { const reader = new FileReader(); reader.onloadend = () => setForm({...form, imagen_url: reader.result}); reader.readAsDataURL(e.target.files[0]); }} /></Button>
-                      <Button variant="outlined" component="label" startIcon={<CloudUpload />}>Galería<input type="file" hidden multiple accept="image/*" onChange={handleMultipleImages} /></Button>
-                    </Stack>
-                    <Stack direction="row" spacing={1} sx={{ overflowX: 'auto', p: 1, bgcolor: '#fff', borderRadius: 1 }}>
-                      {form.imagen_url && <Box component="img" src={form.imagen_url} sx={{ width: 100, height: 100, objectFit: 'cover', border: '2px solid green' }} />}
-                      {(form.imagenes_extra || []).map((img, i) => (<Box key={i} component="img" src={img} sx={{ width: 100, height: 100, objectFit: 'cover' }} />))}
-                    </Stack>
-                  </Grid>
-                  <Grid item size={{ xs: 12 }} sx={{ mt: 3 }}><Button type="submit" variant="contained" fullWidth sx={{ bgcolor: palette.botonPrincipal, height: 60, fontWeight: 900 }}>{form.id ? "GUARDAR CAMBIOS" : "PUBLICA AHORA"}</Button></Grid>
-                </Grid>
-              </form>
+                  } 
+                  label={
+                    <Box>
+                      <Typography variant="body2" sx={{ fontWeight: 'bold' }}>Se aceptan mascotas</Typography>
+                      <Typography variant="caption" color="textSecondary">* Bajo estrictas políticas de higiene y comportamiento educado.</Typography>
+                    </Box>
+                  } 
+                />
+              </Stack>
             </Paper>
-          </Container>
-        )}
+          </Grid>
 
+          <Grid item size={{ xs: 12 }}>
+            <TextField 
+              label="Reglas del Departamento (ej: No ruidos después de las 10 PM, No fiestas)" 
+              multiline rows={2} fullWidth 
+              value={form.reglas || ""} 
+              onChange={(e) => setForm({...form, reglas: e.target.value})} 
+            />
+          </Grid>
+
+          <Grid item size={{ xs: 12 }}>
+            <TextField label="Descripción detallada" multiline rows={4} fullWidth value={form.descripcion} onChange={(e) => setForm({...form, descripcion: e.target.value})} />
+          </Grid>
+
+          <Grid item size={{ xs: 12 }} sx={{ mt: 2 }}>
+            <Typography variant="h6" color={palette.botonPrincipal} sx={{ display: 'flex', alignItems: 'center', gap: 1, fontWeight: 700 }}>
+              <CloudUpload /> 5. Fotos del Departamento
+            </Typography>
+            <Divider sx={{ my: 1, borderBottomWidth: 2, borderColor: palette.botonPrincipal }} />
+          </Grid>
+
+          <Grid item size={{ xs: 12 }}>
+            <Stack direction="row" spacing={2} sx={{ mb: 2 }}>
+              <Button variant="outlined" component="label" startIcon={<Add />}>
+                Foto Principal
+                <input type="file" hidden accept="image/*" onChange={(e) => { const reader = new FileReader(); reader.onloadend = () => setForm({...form, imagen_url: reader.result}); reader.readAsDataURL(e.target.files[0]); }} />
+              </Button>
+              <Button variant="outlined" component="label" startIcon={<CloudUpload />}>
+                Galería
+                <input type="file" hidden multiple accept="image/*" onChange={handleMultipleImages} />
+              </Button>
+            </Stack>
+            <Stack direction="row" spacing={1} sx={{ overflowX: 'auto', p: 1, bgcolor: '#fff', borderRadius: 1 }}>
+              {form.imagen_url && <Box component="img" src={form.imagen_url} sx={{ width: 100, height: 100, objectFit: 'cover', border: '2px solid green' }} />}
+              {(form.imagenes_extra || []).map((img, i) => (<Box key={i} component="img" src={img} sx={{ width: 100, height: 100, objectFit: 'cover' }} />))}
+            </Stack>
+          </Grid>
+
+          <Grid item size={{ xs: 12 }} sx={{ mt: 3 }}>
+            <Button type="submit" variant="contained" fullWidth sx={{ bgcolor: palette.botonPrincipal, height: 60, fontWeight: 900 }}>
+              {form.id ? "GUARDAR CAMBIOS" : "PUBLICA AHORA"}
+            </Button>
+          </Grid>
+        </Grid>
+      </form>
+    </Paper>
+  </Container>
+)}
         {aseccion === "solicitudes" && (
           <TableContainer component={Paper} sx={{ borderRadius: "15px", boxShadow: "0 4px 20px rgba(0,0,0,0.05)" }}>
             <Table>
