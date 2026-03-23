@@ -68,7 +68,7 @@ const AdminDashboard = () => {
     parqueaderos: "0", piso: "1", año_construccion: "2024", reglas: "", 
     incluye_agua: true, incluye_luz: true, incluye_internet: true, mascotas: false,
     fumar: false, ascensor: false, seguridad: false, gym: false, piscina: false,
-    latitud: "", longitud: "", calle_secundaria: "" // ✅ FUSIÓN: Agregada variable de Nathasha
+    latitud: "", longitud: "", calle_secundaria: "" 
   });
   
   const currentUser = authService.getCurrentUser();
@@ -185,6 +185,34 @@ const AdminDashboard = () => {
     }
   };
 
+  // ✅ NUEVA FUNCIÓN: CAMBIAR ESTADO DE LA PROPIEDAD
+  const toggleEstadoPropiedad = async (p) => {
+    const esOcupado = p.estado?.toLowerCase() === 'ocupado';
+    const nuevoEstado = esOcupado ? 'disponible' : 'ocupado';
+    try {
+      // Reutilizamos la misma estructura segura de tu guardado
+      const dataToSend = {
+        ...p,
+        estado: nuevoEstado,
+        precio_mensual: parseFloat(p.precio_mensual) || 0,
+        garantia: parseFloat(p.garantia) || 0,
+        alicuota: parseFloat(p.alicuota) || 0,
+        habitaciones: parseInt(p.habitaciones) || 0,
+        banos: parseInt(p.banos) || 0,
+        parqueaderos: parseInt(p.parqueaderos) || 0,
+        metros_cuadrados: parseFloat(p.metros_cuadrados) || 0,
+        latitud: p.latitud ? parseFloat(p.latitud) : null,
+        longitud: p.longitud ? parseFloat(p.longitud) : null,
+      };
+
+      await axios.put(`${API_PROPIEDADES}/${p.id}`, dataToSend);
+      setAlerta({ open: true, mensaje: `✅ Propiedad marcada como ${nuevoEstado.toUpperCase()}`, severidad: "success" });
+      cargarDatos(); // Recarga la lista para actualizar los letreros visuales
+    } catch (error) {
+      setAlerta({ open: true, mensaje: "❌ Error al cambiar el estado de la propiedad.", severidad: "error" });
+    }
+  };
+
   const handleMultipleImages = (e) => {
     const files = Array.from(e.target.files);
     files.forEach(file => {
@@ -202,7 +230,6 @@ const AdminDashboard = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      // ✅ FUSIÓN: Se agregan las funciones de Nathasha y las mías sin conflictos
       const dataToSend = {
         ...form,
         codigo: form.id ? form.codigo : `PROP-${Math.floor(Math.random() * 9000 + 1000)}`,
@@ -244,7 +271,7 @@ const AdminDashboard = () => {
     parqueaderos: "0", piso: "1", año_construccion: "2024", reglas: "",
     incluye_agua: true, incluye_luz: true, incluye_internet: true, mascotas: false,
     fumar: false, ascensor: false, seguridad: false, gym: false, piscina: false,
-    latitud: "", longitud: "", calle_secundaria: "" // ✅ FUSIÓN: Conservado de Nathasha
+    latitud: "", longitud: "", calle_secundaria: "" 
   });
 
   const handleConfirmarEliminar = (id) => {
@@ -300,6 +327,7 @@ const AdminDashboard = () => {
       const res = await axios.post("http://localhost:5000/api/contratos", contratoData);
       generarPDFContrato({ ...contratoData, id: res.data.id }, tipo);
       setAlerta({ open: true, mensaje: "✅ Contrato robusto generado", severidad: "success" });
+      cargarDatos(); // Recargamos para actualizar el estado ocupado
     } catch (error) {
       setAlerta({ open: true, mensaje: "❌ Error al guardar en DB", severidad: "error" });
     }
@@ -313,16 +341,8 @@ const AdminDashboard = () => {
   return (
     <Box sx={{ display: "flex", bgcolor: palette.fondoPrincipal, minHeight: "100vh" }}>
       
-      <Snackbar 
-        open={alerta.open} 
-        autoHideDuration={4000} 
-        onClose={() => setAlerta({ ...alerta, open: false })}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
-      >
-        <Paper elevation={10} sx={{ 
-          bgcolor: alerta.severidad === "success" ? palette.titulos : "#d32f2f", 
-          color: "white", p: "12px 24px", borderRadius: "12px", display: 'flex', alignItems: 'center', gap: 2 
-        }}>
+      <Snackbar open={alerta.open} autoHideDuration={4000} onClose={() => setAlerta({ ...alerta, open: false })} anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}>
+        <Paper elevation={10} sx={{ bgcolor: alerta.severidad === "success" ? palette.titulos : "#d32f2f", color: "white", p: "12px 24px", borderRadius: "12px", display: 'flex', alignItems: 'center', gap: 2 }}>
           {alerta.severidad === "success" ? <CheckCircle /> : <ErrorOutline />}
           <Typography sx={{ fontWeight: 700 }}>{alerta.mensaje}</Typography>
         </Paper>
@@ -346,11 +366,7 @@ const AdminDashboard = () => {
           <IconButton onClick={() => setFotoComprobante(null)}><Close /></IconButton>
         </Box>
         <Box sx={{ textAlign: 'center' }}>
-          {fotoComprobante ? (
-            <img src={fotoComprobante} alt="Comprobante" style={{ width: '100%', maxHeight: '70vh', objectFit: 'contain', borderRadius: '8px' }} />
-          ) : (
-            <Typography>No hay imagen disponible</Typography>
-          )}
+          {fotoComprobante ? <img src={fotoComprobante} alt="Comprobante" style={{ width: '100%', maxHeight: '70vh', objectFit: 'contain', borderRadius: '8px' }} /> : <Typography>No hay imagen disponible</Typography>}
         </Box>
       </Dialog>
 
@@ -360,105 +376,42 @@ const AdminDashboard = () => {
           <IconButton onClick={() => setFotoMantenimiento(null)}><Close /></IconButton>
         </Box>
         <Box sx={{ textAlign: 'center' }}>
-          {fotoMantenimiento ? (
-            <img src={fotoMantenimiento} alt="Mantenimiento" style={{ width: '100%', maxHeight: '70vh', objectFit: 'contain', borderRadius: '8px' }} />
-          ) : (
-            <Typography>No se adjuntó imagen</Typography>
-          )}
+          {fotoMantenimiento ? <img src={fotoMantenimiento} alt="Mantenimiento" style={{ width: '100%', maxHeight: '70vh', objectFit: 'contain', borderRadius: '8px' }} /> : <Typography>No se adjuntó imagen</Typography>}
         </Box>
       </Dialog>
 
-      <Dialog 
-        open={!!previewProp} 
-        onClose={() => setPreviewProp(null)} 
-        maxWidth="md" 
-        fullWidth 
-        PaperProps={{ 
-          sx: { 
-            borderRadius: 4, 
-            overflow: 'hidden',
-            maxHeight: '90vh'
-          } 
-        }}
-      >
+      <Dialog open={!!previewProp} onClose={() => setPreviewProp(null)} maxWidth="md" fullWidth PaperProps={{ sx: { borderRadius: 4, overflow: 'hidden', maxHeight: '90vh' } }}>
         {previewProp && (
           <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, height: '100%' }}>
-            
             <Box sx={{ width: { xs: '100%', md: '50%' }, position: 'relative', bgcolor: '#000' }}>
-              <CardMedia 
-                component="img" 
-                image={previewProp.imagen_url || "https://via.placeholder.com/400"} 
-                sx={{ height: '100%', objectFit: 'cover' }} 
-              />
-              <Chip 
-                label="Vista Previa de Publicación" 
-                sx={{ position: 'absolute', top: 16, left: 16, bgcolor: palette.titulos, color: 'white', fontWeight: 'bold' }} 
-              />
+              <CardMedia component="img" image={previewProp.imagen_url || "https://via.placeholder.com/400"} sx={{ height: '100%', objectFit: 'cover' }} />
+              <Chip label="Vista Previa de Publicación" sx={{ position: 'absolute', top: 16, left: 16, bgcolor: palette.titulos, color: 'white', fontWeight: 'bold' }} />
             </Box>
-
-            <Box sx={{ 
-              p: 4, 
-              width: { xs: '100%', md: '50%' }, 
-              bgcolor: 'white',
-              overflowY: 'auto',
-              maxHeight: { md: '600px', xs: 'auto' } 
-            }}>
-              <Typography variant="h4" sx={{ fontWeight: 900, color: palette.titulos, fontFamily: 'serif', lineHeight: 1.2 }}>
-                {previewProp.sector}
-              </Typography>
-              
+            <Box sx={{ p: 4, width: { xs: '100%', md: '50%' }, bgcolor: 'white', overflowY: 'auto', maxHeight: { md: '600px', xs: 'auto' } }}>
+              <Typography variant="h4" sx={{ fontWeight: 900, color: palette.titulos, fontFamily: 'serif', lineHeight: 1.2 }}>{previewProp.sector}</Typography>
               <Stack direction="row" spacing={1} alignItems="center" sx={{ color: palette.textoSecundario, mt: 1, mb: 2 }}>
                 <LocationOn fontSize="small" />
                 <Typography variant="body2">{previewProp.ciudad}, Ecuador</Typography>
               </Stack>
-
-              <Typography variant="h3" sx={{ color: palette.botonPrincipal, fontWeight: 900, mb: 3 }}>
-                ${previewProp.precio_mensual}
-              </Typography>
-              
+              <Typography variant="h3" sx={{ color: palette.botonPrincipal, fontWeight: 900, mb: 3 }}>${previewProp.precio_mensual}</Typography>
               <Stack direction="row" spacing={3} sx={{ mb: 3, p: 2, bgcolor: palette.fondoAlterno, borderRadius: 2 }}>
-                <Stack direction="row" spacing={1} alignItems="center">
-                  <Bed sx={{ color: palette.detallesDorado }} />
-                  <Typography variant="body2" fontWeight="bold">{previewProp.habitaciones} Hab.</Typography>
-                </Stack>
-                <Stack direction="row" spacing={1} alignItems="center">
-                  <Bathtub sx={{ color: palette.detallesDorado }} />
-                  <Typography variant="body2" fontWeight="bold">{previewProp.banos} Baños</Typography>
-                </Stack>
+                <Stack direction="row" spacing={1} alignItems="center"><Bed sx={{ color: palette.detallesDorado }} /><Typography variant="body2" fontWeight="bold">{previewProp.habitaciones} Hab.</Typography></Stack>
+                <Stack direction="row" spacing={1} alignItems="center"><Bathtub sx={{ color: palette.detallesDorado }} /><Typography variant="body2" fontWeight="bold">{previewProp.banos} Baños</Typography></Stack>
               </Stack>
-
-              <Typography variant="subtitle2" sx={{ fontWeight: 'bold', color: palette.titulos, mb: 1 }}>
-                Descripción:
-              </Typography>
-              <Typography variant="body2" sx={{ color: '#555', mb: 3, lineHeight: 1.6 }}>
-                {previewProp.descripcion}
-              </Typography>
-              
+              <Typography variant="subtitle2" sx={{ fontWeight: 'bold', color: palette.titulos, mb: 1 }}>Descripción:</Typography>
+              <Typography variant="body2" sx={{ color: '#555', mb: 3, lineHeight: 1.6 }}>{previewProp.descripcion}</Typography>
               {previewProp.reglas && (
                 <Box sx={{ mb: 3, p: 2, borderLeft: `4px solid ${palette.detallesDorado}`, bgcolor: '#fffde7', borderRadius: '0 8px 8px 0' }}>
-                  <Typography variant="caption" sx={{ fontWeight: 'bold', color: palette.titulos, display: 'flex', alignItems: 'center', gap: 1, textTransform: 'uppercase', mb: 0.5 }}>
-                    <Gavel sx={{ fontSize: 16 }} /> Reglas y Convivencia:
-                  </Typography>
-                  <Typography variant="body2" sx={{ color: '#555' }}>
-                    {previewProp.reglas}
-                  </Typography>
+                  <Typography variant="caption" sx={{ fontWeight: 'bold', color: palette.titulos, display: 'flex', alignItems: 'center', gap: 1, textTransform: 'uppercase', mb: 0.5 }}><Gavel sx={{ fontSize: 16 }} /> Reglas y Convivencia:</Typography>
+                  <Typography variant="body2" sx={{ color: '#555' }}>{previewProp.reglas}</Typography>
                 </Box>
               )}
-
-              <Typography variant="subtitle2" sx={{ fontWeight: 'bold', color: palette.titulos, mb: 1 }}>
-                Servicios Incluidos:
-              </Typography>
+              <Typography variant="subtitle2" sx={{ fontWeight: 'bold', color: palette.titulos, mb: 1 }}>Servicios Incluidos:</Typography>
               <Stack direction="row" spacing={1} flexWrap="wrap" gap={1} sx={{ mb: 2 }}>
                 {previewProp.incluye_agua && <Chip label="Agua" size="small" variant="outlined" color="primary" />}
                 {previewProp.incluye_internet && <Chip label="WiFi" size="small" variant="outlined" color="success" />}
                 {previewProp.mascotas && <Chip label="Mascotas ok" size="small" variant="outlined" color="secondary" />}
               </Stack>
-
-              <Divider sx={{ my: 3 }} />
-              
-              <Typography variant="caption" color="textSecondary" textAlign="center" display="block">
-                Fin de la vista previa. Así es como los inquilinos verán tu anuncio.
-              </Typography>
             </Box>
           </Box>
         )}
@@ -536,26 +489,61 @@ const AdminDashboard = () => {
           </Container>
         )}
 
+        {/* ✅ AQUI ESTÁ LA ETIQUETA Y EL BOTÓN MAGICO DE "OCUPADO/DISPONIBLE" */}
         {aseccion === "mis-departamentos" && (
           <Grid container spacing={4}>
-            {propiedadesFiltradas.map((p) => (
-              <Grid item size={{ xs: 12, md: 4 }} key={p.id}>
-                <Card sx={{ borderRadius: 2, border: `1px solid ${palette.textoSecundario}33`, boxShadow: 3, position: 'relative' }}>
-                  <CardMedia component="img" height="220" image={p.imagen_url || "https://via.placeholder.com/400"} />
-                  <IconButton onClick={() => setPreviewProp(p)} sx={{ position: 'absolute', top: 10, right: 10, bgcolor: 'rgba(255,255,255,0.8)', '&:hover': { bgcolor: 'white' } }}>
-                    <Visibility color="primary" />
-                  </IconButton>
-                  <CardContent sx={{ p: 3 }}>
-                    <Typography variant="h6" sx={{ fontWeight: 700, color: palette.titulos }}>{p.sector}</Typography>
-                    <Typography variant="h5" color={palette.botonPrincipal} sx={{ fontWeight: 900, my: 1 }}>${p.precio_mensual}</Typography>
-                    <Stack direction="row" spacing={1} mt={3}>
-                      <Button fullWidth variant="outlined" startIcon={<Edit />} onClick={() => prepararEdicion(p)} sx={{ borderRadius: 2, textTransform: 'none', fontWeight: 600 }}>Editar</Button>
-                      <Button fullWidth variant="outlined" color="error" startIcon={<Delete />} onClick={() => handleConfirmarEliminar(p.id)} sx={{ borderRadius: 2, textTransform: 'none', fontWeight: 600 }}>Borrar</Button>
-                    </Stack>
-                  </CardContent>
-                </Card>
-              </Grid>
-            ))}
+            {propiedadesFiltradas.map((p) => {
+              const esOcupado = p.estado?.toLowerCase() === 'ocupado';
+              return (
+                <Grid item size={{ xs: 12, md: 4 }} key={p.id}>
+                  <Card sx={{ borderRadius: 2, border: `1px solid ${palette.textoSecundario}33`, boxShadow: 3, position: 'relative' }}>
+                    
+                    {/* ✅ ETIQUETA VISUAL */}
+                    <Box sx={{ position: 'absolute', top: 10, left: 10, zIndex: 2 }}>
+                      <Chip 
+                        label={esOcupado ? 'OCUPADO' : 'DISPONIBLE'} 
+                        size="small" 
+                        sx={{ 
+                          bgcolor: esOcupado ? '#d32f2f' : '#2e7d32', 
+                          color: 'white', fontWeight: 'bold', boxShadow: 2 
+                        }} 
+                      />
+                    </Box>
+
+                    <CardMedia component="img" height="220" image={p.imagen_url || "https://via.placeholder.com/400"} />
+                    <IconButton onClick={() => setPreviewProp(p)} sx={{ position: 'absolute', top: 10, right: 10, bgcolor: 'rgba(255,255,255,0.8)', '&:hover': { bgcolor: 'white' } }}>
+                      <Visibility color="primary" />
+                    </IconButton>
+                    <CardContent sx={{ p: 3 }}>
+                      <Typography variant="h6" sx={{ fontWeight: 700, color: palette.titulos }}>{p.sector}</Typography>
+                      <Typography variant="h5" color={palette.botonPrincipal} sx={{ fontWeight: 900, my: 1 }}>${p.precio_mensual}</Typography>
+                      
+                      <Box mt={2}>
+                        {/* ✅ BOTÓN DE ESTADO MANUAL */}
+                        <Button 
+                          fullWidth 
+                          variant="contained" 
+                          onClick={() => toggleEstadoPropiedad(p)} 
+                          sx={{ 
+                            mb: 1.5, borderRadius: 2, textTransform: 'none', fontWeight: 600,
+                            bgcolor: esOcupado ? '#2e7d32' : '#757575',
+                            '&:hover': { bgcolor: esOcupado ? '#1b5e20' : '#424242' }
+                          }}
+                        >
+                          {esOcupado ? 'Marcar como Disponible' : 'Marcar como Ocupado'}
+                        </Button>
+                        
+                        <Stack direction="row" spacing={1}>
+                          <Button fullWidth variant="outlined" startIcon={<Edit />} onClick={() => prepararEdicion(p)} sx={{ borderRadius: 2, textTransform: 'none', fontWeight: 600 }}>Editar</Button>
+                          <Button fullWidth variant="outlined" color="error" startIcon={<Delete />} onClick={() => handleConfirmarEliminar(p.id)} sx={{ borderRadius: 2, textTransform: 'none', fontWeight: 600 }}>Borrar</Button>
+                        </Stack>
+                      </Box>
+
+                    </CardContent>
+                  </Card>
+                </Grid>
+              );
+            })}
           </Grid>
         )}
 
@@ -784,63 +772,18 @@ const AdminDashboard = () => {
           ))}</Box>
         )}
 
-        {/* ✅ TABLA DE PAGOS CON EL NUEVO BUSCADOR Y LOS FILTROS */}
         {aseccion === "pagos" && (
           <Container maxWidth="lg">
             <Typography variant="h4" sx={{ fontWeight: 900, mb: 4, color: palette.titulos }}>Control de Pagos </Typography>
             
-            {/* ✅ CONTENEDOR DE BUSCADOR + BOTONES */}
             <Box sx={{ mb: 3, display: 'flex', flexDirection: { xs: 'column', md: 'row' }, gap: 2, justifyContent: 'space-between', alignItems: { md: 'center' } }}>
-              
-              {/* Botones de Estado */}
               <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-                <Button 
-                  variant={filtroPagosAdmin === 'todos' ? 'contained' : 'outlined'} 
-                  onClick={() => setFiltroPagosAdmin('todos')}
-                  sx={{ borderRadius: 8, borderColor: palette.botonPrincipal, color: filtroPagosAdmin === 'todos' ? 'white' : palette.botonPrincipal, bgcolor: filtroPagosAdmin === 'todos' ? palette.botonPrincipal : 'transparent', '&:hover': { bgcolor: palette.botonPrincipal, color: 'white' } }}
-                >
-                  Todos
-                </Button>
-                <Button 
-                  variant={filtroPagosAdmin === 'pendientes' ? 'contained' : 'outlined'} 
-                  onClick={() => setFiltroPagosAdmin('pendientes')}
-                  sx={{ borderRadius: 8, borderColor: '#f57c00', color: filtroPagosAdmin === 'pendientes' ? 'white' : '#f57c00', bgcolor: filtroPagosAdmin === 'pendientes' ? '#f57c00' : 'transparent', '&:hover': { bgcolor: '#f57c00', color: 'white' } }}
-                >
-                  Pendientes
-                </Button>
-                <Button 
-                  variant={filtroPagosAdmin === 'aprobados' ? 'contained' : 'outlined'} 
-                  onClick={() => setFiltroPagosAdmin('aprobados')}
-                  sx={{ borderRadius: 8, borderColor: '#2e7d32', color: filtroPagosAdmin === 'aprobados' ? 'white' : '#2e7d32', bgcolor: filtroPagosAdmin === 'aprobados' ? '#2e7d32' : 'transparent', '&:hover': { bgcolor: '#2e7d32', color: 'white' } }}
-                >
-                  Aprobados
-                </Button>
-                <Button 
-                  variant={filtroPagosAdmin === 'rechazados' ? 'contained' : 'outlined'} 
-                  onClick={() => setFiltroPagosAdmin('rechazados')}
-                  sx={{ borderRadius: 8, borderColor: '#c62828', color: filtroPagosAdmin === 'rechazados' ? 'white' : '#c62828', bgcolor: filtroPagosAdmin === 'rechazados' ? '#c62828' : 'transparent', '&:hover': { bgcolor: '#c62828', color: 'white' } }}
-                >
-                  Rechazados
-                </Button>
+                <Button variant={filtroPagosAdmin === 'todos' ? 'contained' : 'outlined'} onClick={() => setFiltroPagosAdmin('todos')} sx={{ borderRadius: 8, borderColor: palette.botonPrincipal, color: filtroPagosAdmin === 'todos' ? 'white' : palette.botonPrincipal, bgcolor: filtroPagosAdmin === 'todos' ? palette.botonPrincipal : 'transparent', '&:hover': { bgcolor: palette.botonPrincipal, color: 'white' } }}>Todos</Button>
+                <Button variant={filtroPagosAdmin === 'pendientes' ? 'contained' : 'outlined'} onClick={() => setFiltroPagosAdmin('pendientes')} sx={{ borderRadius: 8, borderColor: '#f57c00', color: filtroPagosAdmin === 'pendientes' ? 'white' : '#f57c00', bgcolor: filtroPagosAdmin === 'pendientes' ? '#f57c00' : 'transparent', '&:hover': { bgcolor: '#f57c00', color: 'white' } }}>Pendientes</Button>
+                <Button variant={filtroPagosAdmin === 'aprobados' ? 'contained' : 'outlined'} onClick={() => setFiltroPagosAdmin('aprobados')} sx={{ borderRadius: 8, borderColor: '#2e7d32', color: filtroPagosAdmin === 'aprobados' ? 'white' : '#2e7d32', bgcolor: filtroPagosAdmin === 'aprobados' ? '#2e7d32' : 'transparent', '&:hover': { bgcolor: '#2e7d32', color: 'white' } }}>Aprobados</Button>
+                <Button variant={filtroPagosAdmin === 'rechazados' ? 'contained' : 'outlined'} onClick={() => setFiltroPagosAdmin('rechazados')} sx={{ borderRadius: 8, borderColor: '#c62828', color: filtroPagosAdmin === 'rechazados' ? 'white' : '#c62828', bgcolor: filtroPagosAdmin === 'rechazados' ? '#c62828' : 'transparent', '&:hover': { bgcolor: '#c62828', color: 'white' } }}>Rechazados</Button>
               </Box>
-
-              {/* ✅ BARRA DE BÚSQUEDA DE TEXTO */}
-              <TextField
-                variant="outlined"
-                size="small"
-                placeholder="Buscar cliente, propiedad o mes..."
-                value={busquedaPagos}
-                onChange={(e) => setBusquedaPagos(e.target.value)}
-                InputProps={{
-                  startAdornment: <InputAdornment position="start"><SearchIcon color="action" /></InputAdornment>,
-                }}
-                sx={{ 
-                  bgcolor: 'white', 
-                  borderRadius: 2, 
-                  minWidth: { xs: '100%', md: '320px' },
-                  '& .MuiOutlinedInput-root': { borderRadius: 2 } 
-                }}
-              />
+              <TextField variant="outlined" size="small" placeholder="Buscar cliente, propiedad o mes..." value={busquedaPagos} onChange={(e) => setBusquedaPagos(e.target.value)} InputProps={{ startAdornment: <InputAdornment position="start"><SearchIcon color="action" /></InputAdornment>, }} sx={{ bgcolor: 'white', borderRadius: 2, minWidth: { xs: '100%', md: '320px' }, '& .MuiOutlinedInput-root': { borderRadius: 2 } }} />
             </Box>
 
             <TableContainer component={Paper} sx={{ borderRadius: "15px", boxShadow: "0 4px 20px rgba(0,0,0,0.05)" }}>
@@ -857,63 +800,16 @@ const AdminDashboard = () => {
                 </TableHead>
                 <TableBody>
                   {pagosAdminFiltrados.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={6} align="center" sx={{ py: 5 }}>
-                        <Typography color="textSecondary">
-                          {busquedaPagos ? "No hay resultados para tu búsqueda." : "No hay pagos que coincidan con este filtro."}
-                        </Typography>
-                      </TableCell>
-                    </TableRow>
+                    <TableRow><TableCell colSpan={6} align="center" sx={{ py: 5 }}><Typography color="textSecondary">{busquedaPagos ? "No hay resultados para tu búsqueda." : "No hay pagos que coincidan con este filtro."}</Typography></TableCell></TableRow>
                   ) : (
                     pagosAdminFiltrados.map((pago) => (
                       <TableRow key={pago.id} hover>
-                        <TableCell>
-                          <Typography variant="body2" fontWeight="bold">{pago.nombre_cliente}</Typography>
-                          <Typography variant="caption" color="textSecondary">
-                            {new Date(pago.fecha_pago).toLocaleDateString()}
-                          </Typography>
-                        </TableCell>
-                        <TableCell>
-                          <Typography variant="body2">{pago.nombre_propiedad}</Typography>
-                        </TableCell>
-                        <TableCell>
-                          <Typography variant="body2" fontWeight="bold" color={palette.botonPrincipal}>${pago.monto}</Typography>
-                          <Typography variant="caption">Mes: {pago.mes}</Typography>
-                        </TableCell>
-                        <TableCell>
-                          {pago.comprobante ? (
-                            <Button size="small" variant="outlined" startIcon={<InsertPhoto />} onClick={() => setFotoComprobante(pago.comprobante)} sx={{ textTransform: 'none', borderRadius: 2 }}>
-                              Ver Foto
-                            </Button>
-                          ) : (
-                            <Typography variant="caption" color="textSecondary">Sin imagen</Typography>
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          <Chip 
-                            label={pago.estado} 
-                            size="small" 
-                            sx={{ 
-                              bgcolor: pago.estado === 'aprobado' ? '#e8f5e9' : pago.estado === 'rechazado' ? '#ffebee' : '#fff3e0', 
-                              color: pago.estado === 'aprobado' ? '#2e7d32' : pago.estado === 'rechazado' ? '#c62828' : '#ef6c00',
-                              fontWeight: 'bold', textTransform: 'uppercase', fontSize: '0.7rem'
-                            }} 
-                          />
-                        </TableCell>
-                        <TableCell align="center">
-                          {pago.estado === 'pendiente' ? (
-                            <Stack direction="row" spacing={1} justifyContent="center">
-                              <IconButton onClick={() => handleEstadoPago(pago.id, 'aprobado')} sx={{ bgcolor: '#e8f5e9', color: '#2e7d32', '&:hover': { bgcolor: '#c8e6c9' } }} title="Aprobar">
-                                <Check fontSize="small" />
-                              </IconButton>
-                              <IconButton onClick={() => handleEstadoPago(pago.id, 'rechazado')} sx={{ bgcolor: '#ffebee', color: '#c62828', '&:hover': { bgcolor: '#ffcdd2' } }} title="Rechazar">
-                                <Close fontSize="small" />
-                              </IconButton>
-                            </Stack>
-                          ) : (
-                            <Typography variant="caption" color="textSecondary">Revisado</Typography>
-                          )}
-                        </TableCell>
+                        <TableCell><Typography variant="body2" fontWeight="bold">{pago.nombre_cliente}</Typography><Typography variant="caption" color="textSecondary">{new Date(pago.fecha_pago).toLocaleDateString()}</Typography></TableCell>
+                        <TableCell><Typography variant="body2">{pago.nombre_propiedad}</Typography></TableCell>
+                        <TableCell><Typography variant="body2" fontWeight="bold" color={palette.botonPrincipal}>${pago.monto}</Typography><Typography variant="caption">Mes: {pago.mes}</Typography></TableCell>
+                        <TableCell>{pago.comprobante ? (<Button size="small" variant="outlined" startIcon={<InsertPhoto />} onClick={() => setFotoComprobante(pago.comprobante)} sx={{ textTransform: 'none', borderRadius: 2 }}>Ver Foto</Button>) : (<Typography variant="caption" color="textSecondary">Sin imagen</Typography>)}</TableCell>
+                        <TableCell><Chip label={pago.estado} size="small" sx={{ bgcolor: pago.estado === 'aprobado' ? '#e8f5e9' : pago.estado === 'rechazado' ? '#ffebee' : '#fff3e0', color: pago.estado === 'aprobado' ? '#2e7d32' : pago.estado === 'rechazado' ? '#c62828' : '#ef6c00', fontWeight: 'bold', textTransform: 'uppercase', fontSize: '0.7rem' }} /></TableCell>
+                        <TableCell align="center">{pago.estado === 'pendiente' ? (<Stack direction="row" spacing={1} justifyContent="center"><IconButton onClick={() => handleEstadoPago(pago.id, 'aprobado')} sx={{ bgcolor: '#e8f5e9', color: '#2e7d32', '&:hover': { bgcolor: '#c8e6c9' } }} title="Aprobar"><Check fontSize="small" /></IconButton><IconButton onClick={() => handleEstadoPago(pago.id, 'rechazado')} sx={{ bgcolor: '#ffebee', color: '#c62828', '&:hover': { bgcolor: '#ffcdd2' } }} title="Rechazar"><Close fontSize="small" /></IconButton></Stack>) : (<Typography variant="caption" color="textSecondary">Revisado</Typography>)}</TableCell>
                       </TableRow>
                     ))
                   )}
@@ -926,7 +822,6 @@ const AdminDashboard = () => {
         {aseccion === "mantenimiento" && (
           <Container maxWidth="lg">
             <Typography variant="h4" sx={{ fontWeight: 900, mb: 4, color: palette.titulos }}>Reportes de Mantenimiento </Typography>
-            
             <TableContainer component={Paper} sx={{ borderRadius: "15px", boxShadow: "0 4px 20px rgba(0,0,0,0.05)" }}>
               <Table>
                 <TableHead sx={{ bgcolor: palette.fondoAlterno }}>
@@ -941,72 +836,19 @@ const AdminDashboard = () => {
                 </TableHead>
                 <TableBody>
                   {mantenimientosAdmin.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={6} align="center" sx={{ py: 5 }}>
-                        <Typography color="textSecondary">No hay reportes de mantenimiento. ¡Todo perfecto!</Typography>
-                      </TableCell>
-                    </TableRow>
+                    <TableRow><TableCell colSpan={6} align="center" sx={{ py: 5 }}><Typography color="textSecondary">No hay reportes de mantenimiento. ¡Todo perfecto!</Typography></TableCell></TableRow>
                   ) : (
                     mantenimientosAdmin.map((m) => (
                       <TableRow key={m.id} hover>
-                        <TableCell>
-                          <Typography variant="body2" fontWeight="bold">{m.nombre_inquilino}</Typography>
-                          <Typography variant="caption" color="textSecondary">
-                            {new Date(m.fecha_reporte).toLocaleDateString()}
-                          </Typography>
-                        </TableCell>
-                        <TableCell>
-                          <Typography variant="body2">{m.nombre_propiedad}</Typography>
-                        </TableCell>
-                        <TableCell sx={{ maxWidth: '250px' }}>
-                          <Typography variant="body2" sx={{ whiteSpace: 'normal', wordWrap: 'break-word' }}>
-                            {m.descripcion}
-                          </Typography>
-                        </TableCell>
-                        <TableCell>
-                          {m.foto_url ? (
-                            <Button size="small" variant="outlined" startIcon={<InsertPhoto />} onClick={() => setFotoMantenimiento(m.foto_url)} sx={{ textTransform: 'none', borderRadius: 2 }}>
-                              Ver Foto
-                            </Button>
-                          ) : (
-                            <Typography variant="caption" color="textSecondary">Sin imagen</Typography>
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          <Chip 
-                            label={m.estado} 
-                            size="small" 
-                            sx={{ 
-                              bgcolor: m.estado === 'Solucionado' ? '#e8f5e9' : m.estado === 'En Revisión' ? '#fff3e0' : '#ffebee', 
-                              color: m.estado === 'Solucionado' ? '#2e7d32' : m.estado === 'En Revisión' ? '#ef6c00' : '#c62828',
-                              fontWeight: 'bold', textTransform: 'uppercase', fontSize: '0.7rem'
-                            }} 
-                          />
-                        </TableCell>
+                        <TableCell><Typography variant="body2" fontWeight="bold">{m.nombre_inquilino}</Typography><Typography variant="caption" color="textSecondary">{new Date(m.fecha_reporte).toLocaleDateString()}</Typography></TableCell>
+                        <TableCell><Typography variant="body2">{m.nombre_propiedad}</Typography></TableCell>
+                        <TableCell sx={{ maxWidth: '250px' }}><Typography variant="body2" sx={{ whiteSpace: 'normal', wordWrap: 'break-word' }}>{m.descripcion}</Typography></TableCell>
+                        <TableCell>{m.foto_url ? (<Button size="small" variant="outlined" startIcon={<InsertPhoto />} onClick={() => setFotoMantenimiento(m.foto_url)} sx={{ textTransform: 'none', borderRadius: 2 }}>Ver Foto</Button>) : (<Typography variant="caption" color="textSecondary">Sin imagen</Typography>)}</TableCell>
+                        <TableCell><Chip label={m.estado} size="small" sx={{ bgcolor: m.estado === 'Solucionado' ? '#e8f5e9' : m.estado === 'En Revisión' ? '#fff3e0' : '#ffebee', color: m.estado === 'Solucionado' ? '#2e7d32' : m.estado === 'En Revisión' ? '#ef6c00' : '#c62828', fontWeight: 'bold', textTransform: 'uppercase', fontSize: '0.7rem' }} /></TableCell>
                         <TableCell align="center">
-                          {m.estado === 'Pendiente' && (
-                            <Button 
-                              size="small" 
-                              variant="contained" 
-                              onClick={() => handleEstadoMantenimiento(m.id, 'En Revisión')} 
-                              sx={{ bgcolor: '#f57c00', textTransform: 'none', borderRadius: 2, '&:hover': { bgcolor: '#ef6c00' } }}
-                            >
-                              Marcar en Revisión
-                            </Button>
-                          )}
-                          {m.estado === 'En Revisión' && (
-                            <Button 
-                              size="small" 
-                              variant="contained" 
-                              onClick={() => handleEstadoMantenimiento(m.id, 'Solucionado')} 
-                              sx={{ bgcolor: '#2e7d32', textTransform: 'none', borderRadius: 2, '&:hover': { bgcolor: '#1b5e20' } }}
-                            >
-                              Marcar Solucionado
-                            </Button>
-                          )}
-                          {m.estado === 'Solucionado' && (
-                            <Typography variant="caption" color="textSecondary">Cerrado el {new Date(m.fecha_solucion).toLocaleDateString()}</Typography>
-                          )}
+                          {m.estado === 'Pendiente' && (<Button size="small" variant="contained" onClick={() => handleEstadoMantenimiento(m.id, 'En Revisión')} sx={{ bgcolor: '#f57c00', textTransform: 'none', borderRadius: 2, '&:hover': { bgcolor: '#ef6c00' } }}>Marcar en Revisión</Button>)}
+                          {m.estado === 'En Revisión' && (<Button size="small" variant="contained" onClick={() => handleEstadoMantenimiento(m.id, 'Solucionado')} sx={{ bgcolor: '#2e7d32', textTransform: 'none', borderRadius: 2, '&:hover': { bgcolor: '#1b5e20' } }}>Marcar Solucionado</Button>)}
+                          {m.estado === 'Solucionado' && (<Typography variant="caption" color="textSecondary">Cerrado el {new Date(m.fecha_solucion).toLocaleDateString()}</Typography>)}
                         </TableCell>
                       </TableRow>
                     ))

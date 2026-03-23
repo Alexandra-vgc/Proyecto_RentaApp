@@ -53,7 +53,6 @@ const ensureClientData = async (email, nombreCompleto, tipo_cliente) => {
   } else {
     const compRes = await pool.query('SELECT id FROM compradores WHERE email = $1', [email]);
     if (compRes.rows.length === 0) {
-      // ✅ SOLUCIÓN: Agregada la columna "cedula" y el valor "cedulaUnica" para los compradores
       await pool.query(
         `INSERT INTO compradores (id, nombre, apellido, cedula, email, telefono) VALUES ($1, $2, $3, $4, $5, $6)`,
         [usuarioId, nombre, apellido, cedulaUnica, email, '0900000000']
@@ -82,6 +81,12 @@ export const crear = async (req, res) => {
       `INSERT INTO contratos (solicitud_id, propiedad_id, ${columnaId}, fecha_inicio, fecha_fin, monto_mensual, estado)
        VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
       [solicitud_id, propiedad_id, idLegal, fecha_inicio, fecha_fin, canon || 0, 'activo']
+    );
+
+    // ✅ MAGIA DE BLOQUEO: Ocupamos la propiedad automáticamente en la base de datos
+    await pool.query(
+      `UPDATE propiedades SET estado = 'ocupado' WHERE id = $1`,
+      [propiedad_id]
     );
 
     const esComprador = tipo_cliente === 'comprador';
