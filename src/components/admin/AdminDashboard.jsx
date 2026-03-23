@@ -61,6 +61,11 @@ const AdminDashboard = () => {
   const [mantenimientosAdmin, setMantenimientosAdmin] = useState([]);
   const [fotoMantenimiento, setFotoMantenimiento] = useState(null);
 
+  // NUEVOS ESTADOS PARA FILTRAR CITAS Y CONTRATOS
+  const [filtroSolicitudes, setFiltroSolicitudes] = useState('todas'); 
+  const [busquedaSolicitudes, setBusquedaSolicitudes] = useState("");
+  const [busquedaContratos, setBusquedaContratos] = useState("");
+
   const [form, setForm] = useState({
     id: null, sector: "", ciudad: "", direccion: "", precio_mensual: "", habitaciones: "", 
     banos: "", metros_cuadrados: "", descripcion: "", imagen_url: "", imagenes_extra: [],
@@ -148,6 +153,7 @@ const AdminDashboard = () => {
   };
 
   const stats = useMemo(() => {
+    if (!Array.isArray(propiedades) || !Array.isArray(solicitudes)) return { totalRenta: 0, pendientes: 0, chartData: [] };
     const totalRenta = propiedades.reduce((acc, p) => acc + parseFloat(p.precio_mensual || 0), 0);
     const pendientes = solicitudes.filter(s => s.estado === 'pendiente').length;
     const chartData = propiedades.slice(0, 6).map(p => ({
@@ -158,6 +164,7 @@ const AdminDashboard = () => {
   }, [propiedades, solicitudes]);
 
   const pagosAdminFiltrados = useMemo(() => {
+    if (!Array.isArray(pagosAdmin)) return []; 
     return pagosAdmin.filter(pago => {
       const est = pago.estado?.toLowerCase() || 'pendiente';
       let pasaBoton = true;
@@ -165,7 +172,7 @@ const AdminDashboard = () => {
       else if (filtroPagosAdmin === 'pendientes') pasaBoton = (est === 'pendiente');
       else if (filtroPagosAdmin === 'rechazados') pasaBoton = (est === 'rechazado' || est === 'atrasado');
 
-      const texto = busquedaPagos.toLowerCase();
+      const texto = (busquedaPagos || "").toLowerCase();
       const pasaTexto = 
         (pago.nombre_cliente && pago.nombre_cliente.toLowerCase().includes(texto)) ||
         (pago.nombre_propiedad && pago.nombre_propiedad.toLowerCase().includes(texto)) ||
@@ -174,6 +181,40 @@ const AdminDashboard = () => {
       return pasaBoton && pasaTexto;
     });
   }, [pagosAdmin, filtroPagosAdmin, busquedaPagos]);
+
+  // LÓGICA DE FILTRADO PARA CITAS
+  const solicitudesFiltradas = useMemo(() => {
+    if (!Array.isArray(solicitudes)) return []; 
+    return solicitudes.filter(sol => {
+      const tieneContrato = Array.isArray(contratos) ? contratos.some(c => c.solicitud_id === sol.id) : false;
+      const est = sol.estado?.toLowerCase() || 'pendiente';
+      
+      let pasaFiltro = true;
+      if (filtroSolicitudes === 'pendientes') pasaFiltro = (est === 'pendiente');
+      else if (filtroSolicitudes === 'aceptadas') pasaFiltro = (est === 'aceptada' && !tieneContrato);
+
+      const texto = (busquedaSolicitudes || "").toLowerCase();
+      const propInfo = Array.isArray(propiedades) ? propiedades.find(p => p.id === sol.propiedad_id) : null;
+      const nombreProp = propInfo ? propInfo.sector.toLowerCase() : "";
+
+      const pasaTexto = 
+        (sol.nombre_cliente && sol.nombre_cliente.toLowerCase().includes(texto)) ||
+        (sol.correo_cliente && sol.correo_cliente.toLowerCase().includes(texto)) ||
+        (nombreProp.includes(texto));
+
+      return pasaFiltro && pasaTexto;
+    });
+  }, [solicitudes, contratos, propiedades, filtroSolicitudes, busquedaSolicitudes]);
+
+  // ✅ NUEVA LÓGICA DE FILTRADO PARA CONTRATOS
+  const contratosFiltrados = useMemo(() => {
+    if (!Array.isArray(contratos)) return [];
+    const texto = (busquedaContratos || "").toLowerCase();
+    return contratos.filter(c => 
+      (c.nombre_cliente && c.nombre_cliente.toLowerCase().includes(texto)) ||
+      (c.nombre_propiedad && c.nombre_propiedad.toLowerCase().includes(texto))
+    );
+  }, [contratos, busquedaContratos]);
 
   const handleAceptarCita = async (id, correo, nombre) => {
     try {
@@ -185,12 +226,10 @@ const AdminDashboard = () => {
     }
   };
 
-  // ✅ NUEVA FUNCIÓN: CAMBIAR ESTADO DE LA PROPIEDAD
   const toggleEstadoPropiedad = async (p) => {
     const esOcupado = p.estado?.toLowerCase() === 'ocupado';
     const nuevoEstado = esOcupado ? 'disponible' : 'ocupado';
     try {
-      // Reutilizamos la misma estructura segura de tu guardado
       const dataToSend = {
         ...p,
         estado: nuevoEstado,
@@ -207,7 +246,7 @@ const AdminDashboard = () => {
 
       await axios.put(`${API_PROPIEDADES}/${p.id}`, dataToSend);
       setAlerta({ open: true, mensaje: `✅ Propiedad marcada como ${nuevoEstado.toUpperCase()}`, severidad: "success" });
-      cargarDatos(); // Recarga la lista para actualizar los letreros visuales
+      cargarDatos(); 
     } catch (error) {
       setAlerta({ open: true, mensaje: "❌ Error al cambiar el estado de la propiedad.", severidad: "error" });
     }
@@ -305,6 +344,8 @@ const AdminDashboard = () => {
     const solicitud = solicitudes.find((s) => s.id === solicitud_id);
     if (!solicitud) return;
 
+    const cedulaReal = "17XXXXXXXX"; 
+
     const contratoData = {
       solicitud_id: solicitud.id,
       propiedad_id: solicitud.propiedad_id,
@@ -314,7 +355,7 @@ const AdminDashboard = () => {
       nombre_cliente: solicitud.nombre_cliente,
       nombre_propiedad: solicitud.sector_propiedad || "Departamento Lujoso",
       tipo_cliente: tipo,
-      cedula: "172XXXXXXX", 
+      cedula: cedulaReal, 
       estado_civil: "SOLTERO/A",
       nacionalidad: "ECUATORIANA",
       direccion_cliente: "Calle Principal y Av. Interoceánica",
@@ -327,14 +368,16 @@ const AdminDashboard = () => {
       const res = await axios.post("http://localhost:5000/api/contratos", contratoData);
       generarPDFContrato({ ...contratoData, id: res.data.id }, tipo);
       setAlerta({ open: true, mensaje: "✅ Contrato robusto generado", severidad: "success" });
-      cargarDatos(); // Recargamos para actualizar el estado ocupado
+      cargarContratos();
+      cargarDatos(); 
     } catch (error) {
       setAlerta({ open: true, mensaje: "❌ Error al guardar en DB", severidad: "error" });
     }
   };
 
-  const propiedadesFiltradas = useMemo(() => {
-    const b = busqueda.toLowerCase();
+  const propiedadesSeguras = useMemo(() => {
+    if (!Array.isArray(propiedades)) return [];
+    const b = (busqueda || "").toLowerCase();
     return propiedades.filter(p => p.sector?.toLowerCase().includes(b) || p.ciudad?.toLowerCase().includes(b));
   }, [busqueda, propiedades]);
 
@@ -489,16 +532,14 @@ const AdminDashboard = () => {
           </Container>
         )}
 
-        {/* ✅ AQUI ESTÁ LA ETIQUETA Y EL BOTÓN MAGICO DE "OCUPADO/DISPONIBLE" */}
         {aseccion === "mis-departamentos" && (
           <Grid container spacing={4}>
-            {propiedadesFiltradas.map((p) => {
+            {(propiedadesSeguras || []).map((p) => {
               const esOcupado = p.estado?.toLowerCase() === 'ocupado';
               return (
                 <Grid item size={{ xs: 12, md: 4 }} key={p.id}>
                   <Card sx={{ borderRadius: 2, border: `1px solid ${palette.textoSecundario}33`, boxShadow: 3, position: 'relative' }}>
                     
-                    {/* ✅ ETIQUETA VISUAL */}
                     <Box sx={{ position: 'absolute', top: 10, left: 10, zIndex: 2 }}>
                       <Chip 
                         label={esOcupado ? 'OCUPADO' : 'DISPONIBLE'} 
@@ -519,7 +560,6 @@ const AdminDashboard = () => {
                       <Typography variant="h5" color={palette.botonPrincipal} sx={{ fontWeight: 900, my: 1 }}>${p.precio_mensual}</Typography>
                       
                       <Box mt={2}>
-                        {/* ✅ BOTÓN DE ESTADO MANUAL */}
                         <Button 
                           fullWidth 
                           variant="contained" 
@@ -659,117 +699,189 @@ const AdminDashboard = () => {
         )}
 
         {aseccion === "solicitudes" && (
-          <TableContainer component={Paper} sx={{ borderRadius: "15px", boxShadow: "0 4px 20px rgba(0,0,0,0.05)" }}>
-            <Table>
-              <TableHead sx={{ bgcolor: palette.fondoAlterno }}>
-                <TableRow>
-                  <TableCell sx={{ fontWeight: 'bold', color: palette.titulos }}>Inmueble</TableCell>
-                  <TableCell sx={{ fontWeight: 'bold', color: palette.titulos }}>Cliente</TableCell>
-                  <TableCell sx={{ fontWeight: 'bold', color: palette.titulos }}>Fecha / Hora</TableCell>
-                  <TableCell sx={{ fontWeight: 'bold', color: palette.titulos }}>Estado</TableCell>
-                  <TableCell sx={{ fontWeight: 'bold', color: palette.titulos }}>Acciones</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {solicitudes.map((sol) => {
-                  const indexProp = propiedades.findIndex(p => p.id === sol.propiedad_id) + 1;
-                  const propInfo = propiedades.find(p => p.id === sol.propiedad_id);
+          <Container maxWidth="lg">
+            <Typography variant="h4" sx={{ fontWeight: 900, mb: 4, color: palette.titulos }}>Gestión de Citas </Typography>
 
-                  return (
-                    <TableRow key={sol.id} hover>
-                      <TableCell>
-                        <Typography variant="body2" sx={{ fontWeight: 800, color: palette.botonPrincipal }}>
-                          Inmueble #{indexProp > 0 ? indexProp : sol.propiedad_id}
-                        </Typography>
-                        <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block' }}>
-                          {propInfo ? propInfo.sector : 'Cargando...'}
-                        </Typography>
-                      </TableCell>
+            {/* ✅ FILTRO ACTUALIZADO (Sin botón 'Con Contrato') */}
+            <Box sx={{ mb: 3, display: 'flex', flexDirection: { xs: 'column', md: 'row' }, gap: 2, justifyContent: 'space-between', alignItems: { md: 'center' } }}>
+              <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                <Button 
+                  variant={filtroSolicitudes === 'todas' ? 'contained' : 'outlined'} 
+                  onClick={() => setFiltroSolicitudes('todas')}
+                  sx={{ borderRadius: 8, borderColor: palette.botonPrincipal, color: filtroSolicitudes === 'todas' ? 'white' : palette.botonPrincipal, bgcolor: filtroSolicitudes === 'todas' ? palette.botonPrincipal : 'transparent', '&:hover': { bgcolor: palette.botonPrincipal, color: 'white' } }}
+                >
+                  Todas
+                </Button>
+                <Button 
+                  variant={filtroSolicitudes === 'pendientes' ? 'contained' : 'outlined'} 
+                  onClick={() => setFiltroSolicitudes('pendientes')}
+                  sx={{ borderRadius: 8, borderColor: '#f57c00', color: filtroSolicitudes === 'pendientes' ? 'white' : '#f57c00', bgcolor: filtroSolicitudes === 'pendientes' ? '#f57c00' : 'transparent', '&:hover': { bgcolor: '#f57c00', color: 'white' } }}
+                >
+                  Pendientes
+                </Button>
+                <Button 
+                  variant={filtroSolicitudes === 'aceptadas' ? 'contained' : 'outlined'} 
+                  onClick={() => setFiltroSolicitudes('aceptadas')}
+                  sx={{ borderRadius: 8, borderColor: '#2e7d32', color: filtroSolicitudes === 'aceptadas' ? 'white' : '#2e7d32', bgcolor: filtroSolicitudes === 'aceptadas' ? '#2e7d32' : 'transparent', '&:hover': { bgcolor: '#2e7d32', color: 'white' } }}
+                >
+                  Aceptadas (Sin Contrato)
+                </Button>
+              </Box>
 
-                      <TableCell>
-                        <Typography variant="body2" sx={{ fontWeight: 600 }}>{sol.nombre_cliente}</Typography>
-                        <Typography variant="caption" sx={{ color: palette.textoSecundario }}>{sol.correo_cliente}</Typography>
-                      </TableCell>
+              <TextField
+                variant="outlined" size="small" placeholder="Buscar cliente, correo o inmueble..."
+                value={busquedaSolicitudes} onChange={(e) => setBusquedaSolicitudes(e.target.value)}
+                InputProps={{ startAdornment: <InputAdornment position="start"><SearchIcon color="action" /></InputAdornment> }}
+                sx={{ bgcolor: 'white', borderRadius: 2, minWidth: { xs: '100%', md: '320px' }, '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
+              />
+            </Box>
 
-                      <TableCell sx={{ fontSize: '0.85rem' }}>
-                        {new Date(sol.fecha_cita).toLocaleDateString('es-EC', { day: '2-digit', month: '2-digit', year: 'numeric' })}
-                        <br />
-                        <Typography variant="caption" sx={{ fontWeight: 'bold', color: '#666' }}>{sol.hora_cita}</Typography>
-                      </TableCell>
-
-                      <TableCell>
-                        <Chip 
-                          label={sol.estado} 
-                          size="small"
-                          sx={{ 
-                            bgcolor: sol.estado === 'aceptada' ? '#e8f5e9' : '#f5f5f5', 
-                            color: sol.estado === 'aceptada' ? '#2e7d32' : '#757575',
-                            fontWeight: 'bold', textTransform: 'uppercase', fontSize: '0.65rem'
-                          }} 
-                        />
-                      </TableCell>
-
-                      <TableCell>
-                        <Stack direction="column" spacing={1}>
-                          {sol.estado === 'pendiente' && (
-                            <Button 
-                              variant="contained" 
-                              size="small" 
-                              onClick={() => handleAceptarCita(sol.id, sol.correo_cliente, sol.nombre_cliente)}
-                              sx={{ textTransform: 'none', borderRadius: '8px' }}
-                            >
-                              Aceptar Cita
-                            </Button>
-                          )}
-
-                          {sol.estado === 'aceptada' && (
-                            <Stack direction="row" spacing={1}>
-                              <Button 
-                                variant="contained" 
-                                size="small" 
-                                onClick={() => iniciarContrato(sol.id, 'inquilino')}
-                                sx={{ 
-                                  bgcolor: palette.titulos, 
-                                  textTransform: 'none', 
-                                  borderRadius: '8px', 
-                                  fontSize: '0.7rem',
-                                  '&:hover': { bgcolor: '#3d472f' } 
-                                }}
-                              >
-                                + Arriendo
-                              </Button>
-                              <Button 
-                                variant="contained" 
-                                size="small" 
-                                onClick={() => iniciarContrato(sol.id, 'comprador')}
-                                sx={{ 
-                                  bgcolor: palette.botonPrincipal, 
-                                  textTransform: 'none', 
-                                  borderRadius: '8px', 
-                                  fontSize: '0.7rem' 
-                                }}
-                              >
-                                + Venta
-                              </Button>
-                            </Stack>
-                          )}
-                        </Stack>
+            <TableContainer component={Paper} sx={{ borderRadius: "15px", boxShadow: "0 4px 20px rgba(0,0,0,0.05)" }}>
+              <Table>
+                <TableHead sx={{ bgcolor: palette.fondoAlterno }}>
+                  <TableRow>
+                    <TableCell sx={{ fontWeight: 'bold', color: palette.titulos }}>Inmueble</TableCell>
+                    <TableCell sx={{ fontWeight: 'bold', color: palette.titulos }}>Cliente</TableCell>
+                    <TableCell sx={{ fontWeight: 'bold', color: palette.titulos }}>Fecha / Hora</TableCell>
+                    <TableCell sx={{ fontWeight: 'bold', color: palette.titulos }}>Estado</TableCell>
+                    <TableCell sx={{ fontWeight: 'bold', color: palette.titulos }}>Acciones</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {solicitudesFiltradas.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={5} align="center" sx={{ py: 5 }}>
+                        <Typography color="textSecondary">No hay citas que coincidan con esta búsqueda.</Typography>
                       </TableCell>
                     </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
-          </TableContainer>
+                  ) : (
+                    (solicitudesFiltradas || []).map((sol) => {
+                      const indexProp = Array.isArray(propiedades) ? propiedades.findIndex(p => p.id === sol.propiedad_id) + 1 : 0;
+                      const propInfo = Array.isArray(propiedades) ? propiedades.find(p => p.id === sol.propiedad_id) : null;
+                      
+                      const tieneContrato = Array.isArray(contratos) ? contratos.some(c => c.solicitud_id === sol.id) : false;
+
+                      // Si estamos en filtro "todas" o "aceptadas", y YA tiene contrato, mejor lo ocultamos completamente
+                      if (tieneContrato) return null; 
+
+                      return (
+                        <TableRow key={sol.id} hover>
+                          <TableCell>
+                            <Typography variant="body2" sx={{ fontWeight: 800, color: palette.botonPrincipal }}>
+                              Inmueble #{indexProp > 0 ? indexProp : sol.propiedad_id}
+                            </Typography>
+                            <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block' }}>
+                              {propInfo ? propInfo.sector : 'Cargando...'}
+                            </Typography>
+                          </TableCell>
+
+                          <TableCell>
+                            <Typography variant="body2" sx={{ fontWeight: 600 }}>{sol.nombre_cliente}</Typography>
+                            <Typography variant="caption" sx={{ color: palette.textoSecundario }}>{sol.correo_cliente}</Typography>
+                          </TableCell>
+
+                          <TableCell sx={{ fontSize: '0.85rem' }}>
+                            {new Date(sol.fecha_cita).toLocaleDateString('es-EC', { day: '2-digit', month: '2-digit', year: 'numeric' })}
+                            <br />
+                            <Typography variant="caption" sx={{ fontWeight: 'bold', color: '#666' }}>{sol.hora_cita}</Typography>
+                          </TableCell>
+
+                          <TableCell>
+                            <Chip 
+                              label={sol.estado} 
+                              size="small"
+                              sx={{ 
+                                bgcolor: sol.estado === 'aceptada' ? '#e8f5e9' : '#f5f5f5', 
+                                color: sol.estado === 'aceptada' ? '#2e7d32' : '#757575',
+                                fontWeight: 'bold', textTransform: 'uppercase', fontSize: '0.65rem'
+                              }} 
+                            />
+                          </TableCell>
+
+                          <TableCell>
+                            <Stack direction="column" spacing={1}>
+                              {sol.estado === 'pendiente' && (
+                                <Button 
+                                  variant="contained" 
+                                  size="small" 
+                                  onClick={() => handleAceptarCita(sol.id, sol.correo_cliente, sol.nombre_cliente)}
+                                  sx={{ textTransform: 'none', borderRadius: '8px' }}
+                                >
+                                  Aceptar Cita
+                                </Button>
+                              )}
+
+                              {sol.estado === 'aceptada' && (
+                                <Stack direction="row" spacing={1}>
+                                  <Button 
+                                    variant="contained" 
+                                    size="small" 
+                                    onClick={() => iniciarContrato(sol.id, 'inquilino')}
+                                    sx={{ bgcolor: palette.titulos, textTransform: 'none', borderRadius: '8px', fontSize: '0.7rem', '&:hover': { bgcolor: '#3d472f' } }}
+                                  >
+                                    + Arriendo
+                                  </Button>
+                                  <Button 
+                                    variant="contained" 
+                                    size="small" 
+                                    onClick={() => iniciarContrato(sol.id, 'comprador')}
+                                    sx={{ bgcolor: palette.botonPrincipal, textTransform: 'none', borderRadius: '8px', fontSize: '0.7rem' }}
+                                  >
+                                    + Venta
+                                  </Button>
+                                </Stack>
+                              )}
+                            </Stack>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })
+                  )}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          </Container>
         )}
 
+        {/* ✅ NUEVA VISTA PROFESIONAL Y BUSCADOR PARA CONTRATOS */}
         {aseccion === "contratos" && (
-          <Box>{contratos.map(c => (
-            <Paper key={c.id} sx={{ p: 2, mb: 2, display: 'flex', justifyContent: 'space-between' }}>
-              <Box><Typography fontWeight="bold">{c.nombre_cliente}</Typography><Typography variant="caption">{c.nombre_propiedad}</Typography></Box>
-              <Button onClick={() => generarPDFContrato(c, c.tipo)}>Descargar</Button>
-            </Paper>
-          ))}</Box>
+          <Container maxWidth="lg">
+            <Typography variant="h4" sx={{ fontWeight: 900, mb: 4, color: palette.titulos }}>Contratos Generados </Typography>
+            
+            <Box sx={{ mb: 3, display: 'flex', justifyContent: 'flex-end' }}>
+              <TextField
+                variant="outlined" size="small" placeholder="Buscar por cliente o inmueble..."
+                value={busquedaContratos} onChange={(e) => setBusquedaContratos(e.target.value)}
+                InputProps={{ startAdornment: <InputAdornment position="start"><SearchIcon color="action" /></InputAdornment> }}
+                sx={{ bgcolor: 'white', borderRadius: 2, minWidth: { xs: '100%', md: '320px' }, '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
+              />
+            </Box>
+
+            <Box>
+              {contratosFiltrados.length === 0 ? (
+                <Typography color="textSecondary" textAlign="center" sx={{ mt: 4 }}>No hay contratos que coincidan con la búsqueda.</Typography>
+              ) : (
+                contratosFiltrados.map(c => (
+                  <Paper key={c.id} sx={{ p: 3, mb: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderRadius: 2, boxShadow: '0 4px 20px rgba(0,0,0,0.05)' }}>
+                    <Box>
+                      <Typography variant="h6" fontWeight="bold" color={palette.titulos}>{c.nombre_cliente}</Typography>
+                      <Typography variant="body2" color={palette.textoSecundario} sx={{ fontWeight: 'bold' }}>{c.nombre_propiedad}</Typography>
+                      <Typography variant="caption" color="textSecondary" sx={{ display: 'block', mt: 0.5 }}>
+                        Inició: {new Date(c.fecha_inicio).toLocaleDateString()} | Termina: {new Date(c.fecha_fin).toLocaleDateString()}
+                      </Typography>
+                    </Box>
+                    <Button 
+                      variant="outlined" 
+                      onClick={() => generarPDFContrato(c, c.tipo)} 
+                      sx={{ borderColor: palette.botonPrincipal, color: palette.botonPrincipal, '&:hover': { bgcolor: palette.botonPrincipal, color: 'white' }, borderRadius: 2, textTransform: 'none', fontWeight: 'bold' }}
+                    >
+                      Descargar PDF
+                    </Button>
+                  </Paper>
+                ))
+              )}
+            </Box>
+          </Container>
         )}
 
         {aseccion === "pagos" && (
@@ -802,7 +914,7 @@ const AdminDashboard = () => {
                   {pagosAdminFiltrados.length === 0 ? (
                     <TableRow><TableCell colSpan={6} align="center" sx={{ py: 5 }}><Typography color="textSecondary">{busquedaPagos ? "No hay resultados para tu búsqueda." : "No hay pagos que coincidan con este filtro."}</Typography></TableCell></TableRow>
                   ) : (
-                    pagosAdminFiltrados.map((pago) => (
+                    (pagosAdminFiltrados || []).map((pago) => (
                       <TableRow key={pago.id} hover>
                         <TableCell><Typography variant="body2" fontWeight="bold">{pago.nombre_cliente}</Typography><Typography variant="caption" color="textSecondary">{new Date(pago.fecha_pago).toLocaleDateString()}</Typography></TableCell>
                         <TableCell><Typography variant="body2">{pago.nombre_propiedad}</Typography></TableCell>
@@ -838,7 +950,7 @@ const AdminDashboard = () => {
                   {mantenimientosAdmin.length === 0 ? (
                     <TableRow><TableCell colSpan={6} align="center" sx={{ py: 5 }}><Typography color="textSecondary">No hay reportes de mantenimiento. ¡Todo perfecto!</Typography></TableCell></TableRow>
                   ) : (
-                    mantenimientosAdmin.map((m) => (
+                    (mantenimientosAdmin || []).map((m) => (
                       <TableRow key={m.id} hover>
                         <TableCell><Typography variant="body2" fontWeight="bold">{m.nombre_inquilino}</Typography><Typography variant="caption" color="textSecondary">{new Date(m.fecha_reporte).toLocaleDateString()}</Typography></TableCell>
                         <TableCell><Typography variant="body2">{m.nombre_propiedad}</Typography></TableCell>

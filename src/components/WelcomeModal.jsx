@@ -25,42 +25,22 @@ function WelcomeModal({ onFinish }) {
       <div className="welcome-card shadow-lg">
         
         <div className="row g-0 h-100">
-          {/* LADO IZQUIERDO: DISEÑO ARTÍSTICO */}
-          <div className="col-md-5 d-flex flex-column align-items-center justify-content-center p-4 position-relative" 
+          {/* LADO IZQUIERDO: LOGO PRINCIPAL CENTRADO */}
+          <div className="col-md-5 d-flex flex-column align-items-center justify-content-center p-4" 
                style={{ background: palette.fondoAlterno }}>
             
-            {/* Imagen del Departamento Superior */}
-            <div style={{ 
-                width: "90%", 
-                borderRadius: "15px", 
-                overflow: "hidden", 
-                border: `3px solid ${palette.detallesDorado}`,
-                boxShadow: "0 10px 20px rgba(0,0,0,0.1)",
-                marginBottom: "30px"
-            }}>
+            <div className="logo-container-main">
                 <img 
-                  src="/bienvenida.jpg" 
-                  alt="Interior MiRentaAPP" 
-                  style={{ width: "100%", height: "auto", display: "block", objectFit: "cover" }}
-                  onError={(e) => { e.target.src = "https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?q=80&w=1200"; }} 
+                  src="/logo.png" 
+                  alt="Logo MiRentaAPP" 
+                  className="img-fluid logo-animado"
+                  style={{ 
+                    width: "85%", 
+                    maxWidth: "350px", 
+                    height: "auto",
+                    filter: "drop-shadow(0 10px 15px rgba(0,0,0,0.1))"
+                  }} 
                 />
-            </div>
-
-            {/* Icono de Llave y Hojas (Diseño Inferior) */}
-            <div className="decoracion-llave" style={{ textAlign: "center" }}>
-                <svg width="180" height="80" viewBox="0 0 200 100" fill="none">
-                    {/* Hojas Izquierda */}
-                    <path d="M40 50C20 40 10 50 10 50C10 50 20 60 40 50Z" stroke={palette.titulos} strokeWidth="1"/>
-                    <path d="M45 45C30 30 20 35 20 35C20 35 30 45 45 45Z" stroke={palette.titulos} strokeWidth="1"/>
-                    {/* Llave Dorada */}
-                    <circle cx="100" cy="50" r="12" stroke={palette.detallesDorado} strokeWidth="2.5"/>
-                    <path d="M112 50H140M140 50V60M130 50V60" stroke={palette.detallesDorado} strokeWidth="2.5" strokeLinecap="round"/>
-                    {/* Casa Pequeña */}
-                    <path d="M92 35L100 28L108 35V45H92V35Z" fill={palette.titulos}/>
-                    {/* Hojas Derecha */}
-                    <path d="M160 50C180 40 190 50 190 50C190 50 180 60 160 50Z" stroke={palette.titulos} strokeWidth="1"/>
-                    <path d="M155 45C170 30 180 35 180 35C180 35 170 45 155 45Z" stroke={palette.titulos} strokeWidth="1"/>
-                </svg>
             </div>
           </div>
 
@@ -105,6 +85,13 @@ function WelcomeModal({ onFinish }) {
               </>
             ) : (
               <div className="text-center py-5">
+                {/* LOGO EN PANTALLA DE CARGA */}
+                <img 
+                  src="/logo.png" 
+                  alt="Cargando..." 
+                  style={{ height: "80px", width: "auto", marginBottom: "25px", opacity: 0.8 }} 
+                />
+                <br />
                 <div className="spinner-border mb-3" style={{ color: palette.botonPrincipal, width: "3rem", height: "3rem" }} role="status"></div>
                 <p className="fw-bold mt-2" style={{ color: palette.titulos, fontSize: "1.1rem" }}>Iniciando MiRentaAPP...</p>
               </div>
@@ -125,8 +112,15 @@ function WelcomeModal({ onFinish }) {
             border-radius: 30px; overflow: hidden;
             animation: fadeInScale 0.5s ease-out;
           }
+          .logo-animado {
+            animation: float 4s ease-in-out infinite;
+          }
           .flecha-animada {
             animation: moveRight 1.5s infinite;
+          }
+          @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
           }
           @keyframes moveRight {
             0%, 100% { transform: translateX(0); }

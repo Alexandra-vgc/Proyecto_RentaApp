@@ -58,7 +58,7 @@ const NavigationWrapper = ({ children }) => {
 };
 
 function App() {
-  const [showWelcome, setShowWelcome] = useState(false);
+  const [showWelcome, setShowWelcome] = useState(true);
 
   // Guardias de Rutas
   const ClienteRoute = ({ children }) => {

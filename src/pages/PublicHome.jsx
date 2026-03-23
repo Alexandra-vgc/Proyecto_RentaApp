@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom"; 
 import jsPDF from "jspdf";
-import authService from "../services/authService"; 
+import authService from "../services/authService"; // ✅ MANTENIDO PARA SABER SI ESTÁ LOGUEADO
 
 import {
   Box, Card, CardContent, CardMedia, Typography, Button, Chip, Container, 
@@ -14,6 +14,7 @@ import {
   FavoriteBorder, HomeWork, CompareArrows, SentimentDissatisfied, Straighten
 } from "@mui/icons-material";
 
+// ✅ TU PALETA DE COLORES ORIGINAL RESTAURADA AL 100%
 const palette = {
   fondoPrincipal: "#E8DCCB",    
   fondoAlterno: "#F5EFE6",      
@@ -24,7 +25,7 @@ const palette = {
   detallesDorado: "#C9A227"      
 };
 
-// --- PROPIEDADES SUGERIDAS ---
+// --- ✅ SECCIÓN: PROPIEDADES SUGERIDAS ---
 const PropiedadesSugeridas = ({ propiedades, onVerDetalle, toggleFavorito, favoritos }) => {
   const sugeridas = propiedades.slice(0, 5);
   return (
@@ -68,7 +69,7 @@ const PropiedadesSugeridas = ({ propiedades, onVerDetalle, toggleFavorito, favor
   );
 };
 
-// --- PROPIEDADES POPULARES ---
+// --- ✅ SECCIÓN: PROPIEDADES MÁS POPULARES ---
 const PropiedadesPopulares = ({ propiedades, onVerDetalle, toggleFavorito, favoritos }) => {
   const populares = propiedades.slice(5, 10); 
   return (
@@ -115,11 +116,31 @@ const PropiedadesPopulares = ({ propiedades, onVerDetalle, toggleFavorito, favor
 // --- COMPONENTE DE REGIONES ---
 const RegionesSeccion = ({ onRegionClick }) => {
   const sectoresQuito = [
-    { nombre: "Quito Norte", img: "https://images.unsplash.com/photo-1661272363053-c8a80e23b984?q=80&w=865&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D", desc: "La Carolina, Iñaquito y más" },
-    { nombre: "Quito Centro", img: "https://images.unsplash.com/photo-1634687914388-16ad16610f02?q=80&w=844&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D", desc: "Casco Colonial y cercanías" },
-    { nombre: "Quito Sur", img: "https://images.unsplash.com/photo-1658874286042-63715473d181?q=80&w=870&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D", desc: "Solanda, Quitumbe y más" },
-    { nombre: "Cumbayá y Valles", img: "https://plus.unsplash.com/premium_photo-1754251253993-a29cdc0b6c21?q=80&w=1032&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D", desc: "Tumbaco y Valle de los Chillos" },
-    { nombre: "Pomasqui y Calderón", img: "https://images.unsplash.com/photo-1648742864599-6c940f37c241?q=80&w=388&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D", desc: "Sector Mitad del Mundo" },
+    { 
+      nombre: "Quito Norte", 
+      img: "https://images.unsplash.com/photo-1661272363053-c8a80e23b984?q=80&w=865&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D", 
+      desc: "La Carolina, Iñaquito y más" 
+    },
+    { 
+      nombre: "Quito Centro", 
+      img: "https://images.unsplash.com/photo-1634687914388-16ad16610f02?q=80&w=844&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D", 
+      desc: "Casco Colonial y cercanías" 
+    },
+    { 
+      nombre: "Quito Sur", 
+      img: "https://images.unsplash.com/photo-1658874286042-63715473d181?q=80&w=870&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D", 
+      desc: "Solanda, Quitumbe y más" 
+    },
+    { 
+      nombre: "Cumbayá y Valles", 
+      img: "https://plus.unsplash.com/premium_photo-1754251253993-a29cdc0b6c21?q=80&w=1032&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D", 
+      desc: "Tumbaco y Valle de los Chillos" 
+    },
+    { 
+      nombre: "Pomasqui y Calderón", 
+      img: "https://images.unsplash.com/photo-1648742864599-6c940f37c241?q=80&w=388&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D", 
+      desc: "Sector Mitad del Mundo" 
+    },
   ];
 
   return (
@@ -131,14 +152,61 @@ const RegionesSeccion = ({ onRegionClick }) => {
         Encuentra departamentos en los mejores sectores de la capital y la provincia de Pichincha.
       </Typography>
       
-      <Stack direction="row" spacing={3} sx={{ overflowX: 'auto', pb: 3, '&::-webkit-scrollbar': { height: '8px' }, '&::-webkit-scrollbar-thumb': { bgcolor: palette.textoSecundario, borderRadius: '4px' } }}>
+      <Stack 
+        direction="row" 
+        spacing={3} 
+        sx={{ 
+          overflowX: 'auto', 
+          pb: 3, 
+          '&::-webkit-scrollbar': { height: '8px' }, 
+          '&::-webkit-scrollbar-thumb': { bgcolor: palette.textoSecundario, borderRadius: '4px' } 
+        }}
+      >
         {sectoresQuito.map((sector, index) => (
-          <Card key={index} sx={{ minWidth: 260, maxWidth: 260, borderRadius: 4, position: 'relative', overflow: 'hidden', aspectRatio: '3/4', bgcolor: palette.titulos, transition: 'transform 0.3s', '&:hover': { transform: 'scale(1.03)' }, boxShadow: '0 10px 20px rgba(0,0,0,0.1)' }}>
+          <Card 
+            key={index} 
+            sx={{ 
+              minWidth: 260, 
+              maxWidth: 260, 
+              borderRadius: 4, 
+              position: 'relative', 
+              overflow: 'hidden', 
+              aspectRatio: '3/4', 
+              bgcolor: palette.titulos,
+              transition: 'transform 0.3s', 
+              '&:hover': { transform: 'scale(1.03)' }, 
+              boxShadow: '0 10px 20px rgba(0,0,0,0.1)' 
+            }}
+          >
             <CardActionArea onClick={() => onRegionClick(sector.nombre)} sx={{ height: '100%' }}>
-              <CardMedia component="img" image={sector.img} alt={sector.nombre} sx={{ height: '100%', width: '100%', objectFit: 'cover', filter: 'brightness(0.75)' }} />
-              <Box sx={{ position: 'absolute', bottom: 0, left: 0, right: 0, p: 3, color: 'white', background: 'linear-gradient(to top, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0.2) 60%, transparent 100%)' }}>
-                <Typography variant="h6" sx={{ fontWeight: 800, textTransform: 'uppercase', letterSpacing: '1px' }}>{sector.nombre}</Typography>
-                <Typography variant="caption" sx={{ opacity: 0.9, fontStyle: 'italic' }}>{sector.desc}</Typography>
+              <CardMedia 
+                component="img" 
+                image={sector.img} 
+                alt={sector.nombre} 
+                sx={{ 
+                  height: '100%', 
+                  width: '100%', 
+                  objectFit: 'cover',
+                  filter: 'brightness(0.75)'
+                }} 
+              />
+              <Box 
+                sx={{ 
+                  position: 'absolute', 
+                  bottom: 0, 
+                  left: 0, 
+                  right: 0, 
+                  p: 3, 
+                  color: 'white', 
+                  background: 'linear-gradient(to top, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0.2) 60%, transparent 100%)' 
+                }}
+              >
+                <Typography variant="h6" sx={{ fontWeight: 800, textTransform: 'uppercase', letterSpacing: '1px' }}>
+                  {sector.nombre}
+                </Typography>
+                <Typography variant="caption" sx={{ opacity: 0.9, fontStyle: 'italic' }}>
+                  {sector.desc}
+                </Typography>
               </Box>
             </CardActionArea>
           </Card>
@@ -147,8 +215,7 @@ const RegionesSeccion = ({ onRegionClick }) => {
     </Container>
   );
 };
-
-// --- FOOTER ---
+// --- ✅ TU FOOTER ORIGINAL RESTAURADO Y FUNCIONAL ---
 const Footer = () => (
   <Box component="footer" sx={{ bgcolor: "white", pt: 10, pb: 6, mt: 10, borderTop: `2px solid ${palette.detallesDorado}` }}>
     <Container maxWidth="lg">
@@ -217,11 +284,7 @@ export default function PublicHome() {
 
   useEffect(() => {
     axios.get("http://localhost:5000/api/admin/propiedades")
-      .then(res => { 
-        // ✅ MAGIA DE FILTRADO: Ocultar ocupados al público
-        const propiedadesDisponibles = res.data.filter(p => p.estado?.toLowerCase() === 'disponible');
-        setProperties(propiedadesDisponibles); 
-      })
+      .then(res => { setProperties(res.data); })
       .catch(() => { console.error("Error al cargar propiedades"); });
 
     if (isLogged) {
@@ -240,6 +303,13 @@ export default function PublicHome() {
     } catch (error) { console.error("Error en favorito"); }
   };
 
+  const filtered = properties.filter(p => {
+    const matchSearch = (p.ciudad || "").toLowerCase().includes(search.toLowerCase()) || 
+                        (p.sector || "").toLowerCase().includes(search.toLowerCase());
+    const matchOperacion = p.tipo_operacion === tipoOperacion; 
+    return matchSearch && matchOperacion;
+  });
+
   return (
     <Box sx={{ background: palette.fondoPrincipal, minHeight: "100vh" }}>
       
@@ -248,7 +318,8 @@ export default function PublicHome() {
         <Box sx={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundImage: 'url(https://images.unsplash.com/photo-1512917774080-9991f1c4c750?q=80&w=1200)', backgroundSize: 'cover', backgroundPosition: 'center', zIndex: 1 }} />
         <Box sx={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, background: `linear-gradient(to bottom, rgba(0,0,0,0.7), rgba(78,91,60,0.5))`, zIndex: 2 }} />
         <Box sx={{ position: 'relative', zIndex: 3, px: 2, width: '100%', maxWidth: '900px' }}>
-            <Typography variant="h3" sx={{ fontWeight: 900, mb: 1, fontFamily: 'serif', letterSpacing: '1px' }}>Las mejores propiedades en alquiler de Ecuador</Typography>
+            <Typography variant="h4" sx={{ fontWeight: 900, mb: 1, fontFamily: 'serif', letterSpacing: '0px' }}>Las mejores propiedades en alquiler de Ecuador</Typography>
+            <Typography variant="h6" sx={{ fontWeight: 500, mb: 1, fontFamily: 'serif', letterSpacing: '0px' }}>Descubra la casa en la que le encantará vivir en el portal líder en Propiedades e Inmuebles en alquiler de Ecuador</Typography>
             <Stack direction="row" justifyContent="center" spacing={0} sx={{ mb: -0.5, mt: 4 }}>
                 <Button onClick={() => setTipoOperacion("Venta")} sx={{ bgcolor: tipoOperacion === "Venta" ? 'white' : 'rgba(0,0,0,0.5)', color: tipoOperacion === "Venta" ? palette.titulos : 'white', px: 4, borderRadius: '8px 8px 0 0', fontWeight: 'bold' }}>Comprar</Button>
                 <Button onClick={() => setTipoOperacion("Alquiler")} sx={{ bgcolor: tipoOperacion === "Alquiler" ? 'white' : 'rgba(0,0,0,0.5)', color: tipoOperacion === "Alquiler" ? palette.titulos : 'white', px: 4, borderRadius: '8px 8px 0 0', fontWeight: 'bold' }}>Alquiler</Button>
@@ -260,7 +331,7 @@ export default function PublicHome() {
         </Box>
       </Box>
 
-      {/* 2. SUGERIDAS */}
+      {/* 2. SUGERIDAS (Independiente de búsqueda para que no se vea vacía) */}
       <PropiedadesSugeridas propiedades={properties} onVerDetalle={(id) => navigate(`/propiedad/${id}`)} toggleFavorito={toggleFavorito} favoritos={favoritos} />
 
       {/* 3. REGIONES */}
@@ -269,6 +340,7 @@ export default function PublicHome() {
       {/* 4. POPULARES */}
       <PropiedadesPopulares propiedades={properties} onVerDetalle={(id) => navigate(`/propiedad/${id}`)} toggleFavorito={toggleFavorito} favoritos={favoritos} />
 
+      
       <Footer />
     </Box>
   );
